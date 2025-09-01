@@ -1,343 +1,259 @@
 // ========================================================================================
-// 🖱️ RIGHT-CLICK MENU - YOUR EXISTING CODE WITH TINY LODASH IMPROVEMENTS  
+// 🔹 RIGHT-CLICK MENU SYSTEM (rightclick_menu.js)
 // ========================================================================================
 
 'use strict';
 
-// Your existing helper functions with minimal lodash enhancements:
+// ========================================================================================
+// 🔹 MENU CREATION SYSTEM
+// ========================================================================================
 
-function createMenuItem(id, text, type, options) {
-    var defaults = {
-        id: id,
-        text: text,
-        type: type || 'action',
-        checked: false,
-        disabled: false,
-        indent: false
-    };
-    
-    // TINY IMPROVEMENT: Better lodash assign fallback
-    return _.assign ? _.assign(defaults, options || {}) : 
-           Object.assign ? Object.assign(defaults, options || {}) :
-           (function() {
-               var result = {};
-               for (var key in defaults) result[key] = defaults[key];
-               for (var key in (options || {})) result[key] = options[key];
-               return result;
-           })();
-}
-
-function createMenuSection(name, subsections) {
-    return {
-        name: name,
-        // TINY IMPROVEMENT: Use lodash validation
-        subsections: _.isArray ? (_.isArray(subsections) ? subsections : []) : subsections || []
-    };
-}
-
-function createMenuSubsection(name, items) {
-    return {
-        name: name,
-        // TINY IMPROVEMENT: Use lodash validation  
-        items: _.isArray ? (_.isArray(items) ? items : []) : items || []
-    };
-}
-
-function createMenuSeparator() {
-    return { separator: true };
-}
-
-function createRadioGroup(groupName, options) {
-    // TINY IMPROVEMENT: Your existing lodash pattern, just cleaner fallback
-    if (_.map) {
-        return _.map(options, function(option) {
-            return createMenuItem(option.id, option.text, 'radio', {
-                group: groupName,
-                checked: option.checked || false
-            });
-        });
-    } else {
-        var result = [];
-        for (var i = 0; i < options.length; i++) {
-            var option = options[i];
-            result.push(createMenuItem(option.id, option.text, 'radio', {
-                group: groupName,
-                checked: option.checked || false
-            }));
-        }
-        return result;
-    }
-}
-
-// Your existing functions with your existing lodash patterns (unchanged):
-
-function middlePanel_handleMenuResult(result) {
-    if (result === 0) return false;
-    
-    var actions = _.assign(
-        // Playback actions
-        {
-            100: function() { fb.PlayOrPause(); },
-            101: function() { fb.Stop(); },
-            102: function() { fb.Next(); },
-            103: function() { fb.Prev(); },
-            110: function() { return middlePanel_executeAction(0); },
-            111: function() { return middlePanel_executeAction(1); }
-        },
-        
-        // Art source actions
-        _.fromPairs(_.map([
-            [1100, 0], [1101, 1]
-        ], function(pair) {
-            return [pair[0], function() { 
-                middlePanel_Config.artSource = pair[1]; 
-                middlePanel_refresh(); 
-            }];
-        })),
-        
-        // Scale mode actions  
-        _.fromPairs(_.map([
-            [1110, 0], [1111, 1], [1112, 2], [1113, 3]
-        ], function(pair) {
-            return [pair[0], function() { 
-                middlePanel_Config.scaleMode = pair[1]; 
-                middlePanel_repaint(); 
-            }];
-        })),
-        
-        // Action buttons
-        {
-            1120: function() { middlePanel_refresh(); },
-            1121: function() { middlePanel_clearCache(); }
-        },
-        
-        // Text display toggles
-        _.fromPairs(_.map([
-            [1200, 'showTrackInfo'], [1201, 'showAlbumInfo'],
-            [1230, 'showArtist'], [1231, 'showAlbum'], 
-            [1232, 'showYear'], [1233, 'showTrackNumber']
-        ], function(pair) {
-            return [pair[0], function() {
-                middlePanel_Config[pair[1]] = !middlePanel_Config[pair[1]];
-                middlePanel_repaint();
-            }];
-        })),
-        
-        // Font size actions
-        _.fromPairs(_.map([
-            [1210, 12], [1211, 16], [1212, 20], [1213, 24]
-        ], function(pair) {
-            return [pair[0], function() {
-                middlePanel_Config.fontSize = pair[1];
-                middlePanel_repaint();
-            }];
-        })),
-        
-        // Position actions
-        _.fromPairs(_.map([
-            [1220, 0], [1221, 1], [1222, 2]
-        ], function(pair) {
-            return [pair[0], function() {
-                middlePanel_Config.overlayPosition = pair[1];
-                middlePanel_repaint();
-            }];
-        })),
-        
-        // Click action
-        _.fromPairs(_.map([
-            [1300, 0], [1301, 1], [1302, 2]
-        ], function(pair) {
-            return [pair[0], function() {
-                middlePanel_Config.clickAction = pair[1];
-            }];
-        })),
-        
-        // Wheel action
-        _.fromPairs(_.map([
-            [1310, 0], [1311, 1], [1312, 2]
-        ], function(pair) {
-            return [pair[0], function() {
-                middlePanel_Config.wheelAction = pair[1];
-            }];
-        }))
-    );
-    
-    if (actions[result]) {
-        return actions[result]() || true;
-    }
-    
-    return false;
-}
-
-// Simple compatibility functions:
-function createPanelMenu(menuConfig, x, y) {
+/**
+ * Creates and shows a panel configuration menu
+ * @param {object} config - Panel configuration object
+ * @param {number} x - X position for menu
+ * @param {number} y - Y position for menu
+ * @param {function} changeCallback - Callback for configuration changes
+ * @returns {number} - Menu result ID
+ */
+function createPanelConfigMenu(config, x, y, changeCallback) {
     var menu = window.CreatePopupMenu();
-    return menu.TrackPopupMenu(x, y);
-}
-
-function middlePanel_repaint() {
-    window.Repaint();
+    
+    // Add clickable title that shows Spider Monkey panel context menu
+    menu.AppendMenuItem(MF_STRING, 1, "Panel");
+    menu.AppendMenuSeparator();
+    
+    // Create submenus based on config type
+    var albumArtMenu = createAlbumArtSubmenu(config);
+    var textDisplayMenu = createTextDisplaySubmenu(config);
+    var interactionMenu = createInteractionSubmenu(config);
+    
+    // Add submenus to main menu
+    albumArtMenu.AppendTo(menu, MF_STRING, "Album Art");
+    textDisplayMenu.AppendTo(menu, MF_STRING, "Text Display");
+    interactionMenu.AppendTo(menu, MF_STRING, "Interaction");
+    
+    // Show menu and handle result
+    var result = menu.TrackPopupMenu(x, y);
+    return handleMenuResult(result, config, changeCallback);
 }
 
 // ========================================================================================
-// 🔹 EXISTING MAIN MENU FUNCTION (Enhanced lodash usage only)
+// 🔹 SUBMENU CREATION FUNCTIONS
 // ========================================================================================
 
-function createMiddlePanelMenu(config, x, y, callbacks) {
-    try {
-        var menu = window.CreatePopupMenu();
-        
-        // Get track info from DataManager if available
-        var trackInfo = (typeof DataManager !== 'undefined') ? DataManager.getTrackInfo() : null;
-        
-        // Add playback section if we have a track
-        if (trackInfo && fb.IsPlaying) {
-            // ENHANCED: Use lodash for playback actions
-            var playbackActions = [
-                { id: 100, text: 'Play/Pause' },
-                { id: 101, text: 'Stop', disabled: !fb.IsPlaying },
-                { id: 102, text: 'Next' },
-                { id: 103, text: 'Previous' }
-            ];
-            
-            _.forEach(playbackActions, function(action) {
-                var flags = action.disabled ? (MF_STRING | MF_GRAYED) : MF_STRING;
-                menu.AppendMenuItem(flags, action.id, action.text);
-            });
-            
-            menu.AppendMenuSeparator();
-            menu.AppendMenuItem(MF_STRING, 110, 'Open Folder');
-            menu.AppendMenuItem(MF_STRING, 111, 'Properties');
-            menu.AppendMenuSeparator();
-        }
-        
-        // Add existing submenu systems
-        var albumArtSubmenu = createAlbumArtSubmenu();
-        albumArtSubmenu.AppendTo(menu, MF_STRING, "Album Art");
-        
-        var textDisplaySubmenu = createTextDisplaySubmenu();
-        textDisplaySubmenu.AppendTo(menu, MF_STRING, "Text Display");
-        
-        var interactionSubmenu = createInteractionSubmenu();
-        interactionSubmenu.AppendTo(menu, MF_STRING, "Interaction");
-        
-        var result = menu.TrackPopupMenu(x, y);
-        return middlePanel_handleMenuResult(result, callbacks);
-        
-    } catch (e) {
-        console.log("❌ Error creating middle panel menu:", e.message);
-        return false;
+function createAlbumArtSubmenu(config) {
+    var menu = window.CreatePopupMenu();
+    
+    // Art Source submenu
+    var artSourceMenu = window.CreatePopupMenu();
+    artSourceMenu.AppendMenuItem(MF_STRING, 1100, "Folder First");
+    artSourceMenu.AppendMenuItem(MF_STRING, 1101, "Embedded First");
+    artSourceMenu.CheckMenuRadioItem(1100, 1101, config.artSource === 0 ? 1100 : 1101);
+    artSourceMenu.AppendTo(menu, MF_STRING, "Art Source");
+    
+    // Display Mode submenu
+    var displayModeMenu = window.CreatePopupMenu();
+    displayModeMenu.AppendMenuItem(MF_STRING, 1110, "Fit");
+    displayModeMenu.AppendMenuItem(MF_STRING, 1111, "Fill");
+    displayModeMenu.AppendMenuItem(MF_STRING, 1112, "Stretch");
+    displayModeMenu.AppendMenuItem(MF_STRING, 1113, "Center");
+    var checkedMode = 1110 + config.scaleMode;
+    displayModeMenu.CheckMenuRadioItem(1110, 1113, checkedMode);
+    displayModeMenu.AppendTo(menu, MF_STRING, "Display Mode");
+    
+    menu.AppendMenuSeparator();
+    
+    // Actions
+    menu.AppendMenuItem(MF_STRING, 1120, "Refresh Album Art");
+    menu.AppendMenuItem(MF_STRING, 1121, "Clear Art Cache");
+    
+    return menu;
+}
+
+function createTextDisplaySubmenu(config) {
+    var menu = window.CreatePopupMenu();
+    
+    // Overlay Settings submenu
+    var overlayMenu = window.CreatePopupMenu();
+    overlayMenu.AppendMenuItem(MF_STRING, 1200, "Show Track Info (when no art)");
+    overlayMenu.AppendMenuItem(MF_STRING, 1201, "Show Album Info Overlay");
+    overlayMenu.CheckMenuItem(1200, config.showTrackInfo);
+    overlayMenu.CheckMenuItem(1201, config.showAlbumInfo);
+    overlayMenu.AppendTo(menu, MF_STRING, "Overlay Settings");
+    
+    // Font Size submenu
+    var fontSizeMenu = window.CreatePopupMenu();
+    fontSizeMenu.AppendMenuItem(MF_STRING, 1210, "Small (12)");
+    fontSizeMenu.AppendMenuItem(MF_STRING, 1211, "Medium (16)");
+    fontSizeMenu.AppendMenuItem(MF_STRING, 1212, "Large (20)");
+    fontSizeMenu.AppendMenuItem(MF_STRING, 1213, "Extra Large (24)");
+    var checkedFont = 1210;
+    switch(config.fontSize) {
+        case 12: checkedFont = 1210; break;
+        case 16: checkedFont = 1211; break;
+        case 20: checkedFont = 1212; break;
+        case 24: checkedFont = 1213; break;
     }
+    fontSizeMenu.CheckMenuRadioItem(1210, 1213, checkedFont);
+    fontSizeMenu.AppendTo(menu, MF_STRING, "Font Size");
+    
+    // Overlay Position submenu
+    var positionMenu = window.CreatePopupMenu();
+    positionMenu.AppendMenuItem(MF_STRING, 1220, "Bottom");
+    positionMenu.AppendMenuItem(MF_STRING, 1221, "Top");
+    positionMenu.AppendMenuItem(MF_STRING, 1222, "Center");
+    var checkedPosition = 1220 + config.overlayPosition;
+    positionMenu.CheckMenuRadioItem(1220, 1222, checkedPosition);
+    positionMenu.AppendTo(menu, MF_STRING, "Overlay Position");
+    
+    // Content Options submenu
+    var contentMenu = window.CreatePopupMenu();
+    contentMenu.AppendMenuItem(MF_STRING, 1230, "Show Artist");
+    contentMenu.AppendMenuItem(MF_STRING, 1231, "Show Album");
+    contentMenu.AppendMenuItem(MF_STRING, 1232, "Show Year");
+    contentMenu.AppendMenuItem(MF_STRING, 1233, "Show Track Number");
+    contentMenu.CheckMenuItem(1230, config.showArtist);
+    contentMenu.CheckMenuItem(1231, config.showAlbum);
+    contentMenu.CheckMenuItem(1232, config.showYear);
+    contentMenu.CheckMenuItem(1233, config.showTrackNumber);
+    contentMenu.AppendTo(menu, MF_STRING, "Content Options");
+    
+    return menu;
+}
+
+function createInteractionSubmenu(config) {
+    var menu = window.CreatePopupMenu();
+    
+    // Click Action submenu
+    var clickMenu = window.CreatePopupMenu();
+    clickMenu.AppendMenuItem(MF_STRING, 1300, "Open Folder");
+    clickMenu.AppendMenuItem(MF_STRING, 1301, "Properties");
+    clickMenu.AppendMenuItem(MF_STRING, 1302, "None");
+    var checkedClick = 1300 + config.clickAction;
+    clickMenu.CheckMenuRadioItem(1300, 1302, checkedClick);
+    clickMenu.AppendTo(menu, MF_STRING, "Click Action");
+    
+    // Mouse Wheel Action submenu
+    var wheelMenu = window.CreatePopupMenu();
+    wheelMenu.AppendMenuItem(MF_STRING, 1310, "Volume");
+    wheelMenu.AppendMenuItem(MF_STRING, 1311, "Seek");
+    wheelMenu.AppendMenuItem(MF_STRING, 1312, "None");
+    var checkedWheel = 1310 + config.wheelAction;
+    wheelMenu.CheckMenuRadioItem(1310, 1312, checkedWheel);
+    wheelMenu.AppendTo(menu, MF_STRING, "Mouse Wheel Action");
+    
+    return menu;
 }
 
 // ========================================================================================
-// 🔹 EXISTING RESULT HANDLER (Enhanced lodash usage only) 
+// 🔹 MENU RESULT HANDLER
 // ========================================================================================
 
-function middlePanel_handleMenuResult(result, callbacks) {
+function handleMenuResult(result, config, changeCallback) {
     if (result === 0) return false;
     
     try {
-        // ENHANCED: Use lodash for cleaner action mapping (existing functionality preserved)
-        var actions = _.assign(
-            // Playback actions (existing)
-            {
-                100: function() { fb.PlayOrPause(); },
-                101: function() { fb.Stop(); },
-                102: function() { fb.Next(); },
-                103: function() { fb.Prev(); },
-                110: function() { return middlePanel_executeAction(0); },
-                111: function() { return middlePanel_executeAction(1); }
-            },
-            
-            // Art source actions (enhanced with lodash)
-            _.fromPairs(_.map([
-                [1100, 0], [1101, 1]
-            ], function(pair) {
-                return [pair[0], function() { 
-                    middlePanel_Config.artSource = pair[1]; 
-                    if (callbacks && callbacks.refresh) callbacks.refresh();
-                }];
-            })),
-            
-            // Scale mode actions (enhanced with lodash)
-            _.fromPairs(_.map([
-                [1110, 0], [1111, 1], [1112, 2], [1113, 3]
-            ], function(pair) {
-                return [pair[0], function() { 
-                    middlePanel_Config.scaleMode = pair[1]; 
-                    if (callbacks && callbacks.repaint) callbacks.repaint();
-                }];
-            })),
-            
-            // Action buttons (existing)
-            {
-                1120: function() { 
-                    if (callbacks && callbacks.refresh) callbacks.refresh();
-                },
-                1121: function() { 
-                    if (callbacks && callbacks.clearCache) callbacks.clearCache();
-                }
-            },
-            
-            // Text display toggles (enhanced with lodash)
-            _.fromPairs(_.map([
-                [1200, 'showTrackInfo'], [1201, 'showAlbumInfo'],
-                [1230, 'showArtist'], [1231, 'showAlbum'], 
-                [1232, 'showYear'], [1233, 'showTrackNumber']
-            ], function(pair) {
-                return [pair[0], function() {
-                    middlePanel_Config[pair[1]] = !middlePanel_Config[pair[1]];
-                    if (callbacks && callbacks.repaint) callbacks.repaint();
-                }];
-            })),
-            
-            // Font size actions (enhanced with lodash)
-            _.fromPairs(_.map([
-                [1210, 12], [1211, 16], [1212, 20], [1213, 24]
-            ], function(pair) {
-                return [pair[0], function() {
-                    middlePanel_Config.fontSize = pair[1];
-                    if (callbacks && callbacks.repaint) callbacks.repaint();
-                }];
-            })),
-            
-            // Position actions (enhanced with lodash)
-            _.fromPairs(_.map([
-                [1220, 0], [1221, 1], [1222, 2]
-            ], function(pair) {
-                return [pair[0], function() {
-                    middlePanel_Config.overlayPosition = pair[1];
-                    if (callbacks && callbacks.repaint) callbacks.repaint();
-                }];
-            })),
-            
-            // Click action (enhanced with lodash)
-            _.fromPairs(_.map([
-                [1300, 0], [1301, 1], [1302, 2]
-            ], function(pair) {
-                return [pair[0], function() {
-                    middlePanel_Config.clickAction = pair[1];
-                    if (callbacks && callbacks.configChanged) callbacks.configChanged();
-                }];
-            })),
-            
-            // Wheel action (enhanced with lodash)
-            _.fromPairs(_.map([
-                [1310, 0], [1311, 1], [1312, 2]
-            ], function(pair) {
-                return [pair[0], function() {
-                    middlePanel_Config.wheelAction = pair[1];
-                    if (callbacks && callbacks.configChanged) callbacks.configChanged();
-                }];
-            }))
-        );
-        
-        if (actions[result]) {
-            return actions[result]() || true;
+        // Handle "Panel" menu item - show Spider Monkey panel menu
+        if (result === 1) {
+            return false; // Let Spider Monkey show its context menu
         }
         
-        return false;
+        var configChanged = false;
+        var repaintNeeded = false;
+        var refreshNeeded = false;
+        
+        // Art source actions (1100-1101)
+        if (result >= 1100 && result <= 1101) {
+            config.artSource = result - 1100;
+            configChanged = true;
+            refreshNeeded = true;
+        }
+        
+        // Scale mode actions (1110-1113)
+        else if (result >= 1110 && result <= 1113) {
+            config.scaleMode = result - 1110;
+            configChanged = true;
+            repaintNeeded = true;
+        }
+        
+        // Action buttons (1120-1121)
+        else if (result === 1120) {
+            // Refresh Album Art
+            if (changeCallback) changeCallback('refresh', null);
+            return true;
+        }
+        else if (result === 1121) {
+            // Clear Art Cache
+            if (changeCallback) changeCallback('clearCache', null);
+            return true;
+        }
+        
+        // Text display toggles (1200-1201)
+        else if (result >= 1200 && result <= 1201) {
+            switch(result) {
+                case 1200: 
+                    config.showTrackInfo = !config.showTrackInfo; 
+                    break;
+                case 1201: 
+                    config.showAlbumInfo = !config.showAlbumInfo; 
+                    break;
+            }
+            configChanged = true;
+            repaintNeeded = true;
+        }
+        
+        // Font size actions (1210-1213)
+        else if (result >= 1210 && result <= 1213) {
+            var fontSizes = [12, 16, 20, 24];
+            config.fontSize = fontSizes[result - 1210];
+            configChanged = true;
+            repaintNeeded = true;
+        }
+        
+        // Position actions (1220-1222)
+        else if (result >= 1220 && result <= 1222) {
+            config.overlayPosition = result - 1220;
+            configChanged = true;
+            repaintNeeded = true;
+        }
+        
+        // Content options (1230-1233)
+        else if (result >= 1230 && result <= 1233) {
+            switch(result) {
+                case 1230: config.showArtist = !config.showArtist; break;
+                case 1231: config.showAlbum = !config.showAlbum; break;
+                case 1232: config.showYear = !config.showYear; break;
+                case 1233: config.showTrackNumber = !config.showTrackNumber; break;
+            }
+            configChanged = true;
+            repaintNeeded = true;
+        }
+        
+        // Click action (1300-1302)
+        else if (result >= 1300 && result <= 1302) {
+            config.clickAction = result - 1300;
+            configChanged = true;
+        }
+        
+        // Wheel action (1310-1312)
+        else if (result >= 1310 && result <= 1312) {
+            config.wheelAction = result - 1310;
+            configChanged = true;
+        }
+        
+        // Handle callbacks
+        if (changeCallback) {
+            if (refreshNeeded) {
+                changeCallback('refresh', null);
+            } else if (repaintNeeded) {
+                changeCallback('repaint', null);
+            } else if (configChanged) {
+                changeCallback('configChanged', null);
+            }
+        }
+        
+        return configChanged || repaintNeeded || refreshNeeded;
         
     } catch (e) {
         console.log("❌ Error handling menu result:", e.message);
@@ -346,47 +262,102 @@ function middlePanel_handleMenuResult(result, callbacks) {
 }
 
 // ========================================================================================
-// 🔹 EXISTING COMPATIBILITY FUNCTIONS (unchanged)
+// 🔹 SPECIALIZED MENU FUNCTIONS
 // ========================================================================================
 
 /**
- * Simple panel menu creator for backward compatibility
+ * Create a menu specifically for middle panel (album art panel)
  */
-function createPanelMenu(menuConfig, x, y) {
-    var menu = window.CreatePopupMenu();
-    
-    // Simple flat menu creation (existing functionality)
-    if (menuConfig && menuConfig.sections) {
-        _.forEach(menuConfig.sections, function(section, index) {
-            if (index > 0) {
-                menu.AppendMenuSeparator();
-            }
-            
-            if (section.items) {
-                _.forEach(section.items, function(item) {
-                    if (item.separator) {
-                        menu.AppendMenuSeparator();
-                    } else {
-                        var flags = item.disabled ? (MF_STRING | MF_GRAYED) : MF_STRING;
-                        menu.AppendMenuItem(flags, item.id, item.text);
-                        
-                        if (item.type === 'checkbox' && item.checked) {
-                            menu.CheckMenuItem(item.id, true);
-                        }
-                    }
-                });
-            }
-        });
-    }
-    
-    return menu.TrackPopupMenu(x, y);
+function createMiddlePanelMenu(config, x, y, callbacks) {
+    return createPanelConfigMenu(config, x, y, function(action, value) {
+        switch(action) {
+            case 'refresh':
+                if (callbacks && callbacks.refresh) callbacks.refresh();
+                break;
+            case 'clearCache':
+                if (callbacks && callbacks.clearCache) callbacks.clearCache();
+                break;
+            case 'repaint':
+                if (callbacks && callbacks.repaint) callbacks.repaint();
+                break;
+            case 'configChanged':
+                if (callbacks && callbacks.configChanged) callbacks.configChanged();
+                break;
+        }
+    });
 }
 
 /**
- * Simple repaint function (unchanged)
+ * Simple menu creator for other panels that might need basic menus
  */
-function middlePanel_repaint() {
-    window.Repaint();
+function createSimpleMenu(title, items, x, y) {
+    var menu = window.CreatePopupMenu();
+    
+    if (title) {
+        menu.AppendMenuItem(MF_STRING, 1, title);
+        menu.AppendMenuSeparator();
+    }
+    
+    var id = 100; // Start IDs at 100 to avoid conflicts
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        if (item.separator) {
+            menu.AppendMenuSeparator();
+        } else {
+            var flags = item.disabled ? MF_GRAYED : MF_STRING;
+            menu.AppendMenuItem(flags, id, item.text);
+            item.id = id; // Store ID for result handling
+            id++;
+        }
+    }
+    
+    var result = menu.TrackPopupMenu(x, y);
+    
+    // Handle title click
+    if (result === 1) {
+        return false; // Show Spider Monkey panel menu
+    }
+    
+    // Find selected item
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].id === result && items[i].action) {
+            items[i].action();
+            return true;
+        }
+    }
+    
+    return false;
 }
 
-console.log("✅ Right-Click Menu System Ready (Enhanced lodash usage)");
+// ========================================================================================
+// 🔹 UTILITY FUNCTIONS
+// ========================================================================================
+
+/**
+ * Check if a menu item should be checked based on config
+ */
+function isMenuItemChecked(config, property, value) {
+    if (typeof value === 'boolean') {
+        return config[property] === value;
+    } else {
+        return config[property] === value;
+    }
+}
+
+/**
+ * Toggle a boolean config property
+ */
+function toggleConfigProperty(config, property) {
+    config[property] = !config[property];
+    return config[property];
+}
+
+/**
+ * Set a config property to a specific value
+ */
+function setConfigProperty(config, property, value) {
+    config[property] = value;
+    return true;
+}
+
+console.log("✅ Right-Click Menu System Ready");
