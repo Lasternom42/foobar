@@ -53,6 +53,7 @@ function bottomPanel_init() {
     
     bottomPanel_createComponents();
     bottomPanel_State.initialized = true;
+	console.log("    Bottom Panel:                             Initialized");
 }
 
 function bottomPanel_createComponents() {
@@ -76,7 +77,7 @@ function bottomPanel_createComponents() {
 function bottomPanel_paint(gr, panelSizes, uiFont, uiColors) {
     if (!bottomPanel_State.initialized) bottomPanel_init();
     
-    gr.FillSolidRect(panelSizes.botPanel_X, panelSizes.botPanel_Y, panelSizes.botPanel_W, panelSizes.botPanel_H, uiColors.background_B);
+    gr.FillSolidRect(panelSizes.botPanel_X, panelSizes.botPanel_Y, panelSizes.botPanel_W, panelSizes.botPanel_H, uiColors.background_bottom);
     
     if (!bottomPanel_State.seekbar || !bottomPanel_State.volumebar) {
         bottomPanel_createComponents();
@@ -359,4 +360,4 @@ function updateBottomPanelComponents(panelSizes) {
     }
 }
 
-console.log("✅ Bottom Panel Module Ready");
+console.log("    Bottom Panel Module:                Ready");
