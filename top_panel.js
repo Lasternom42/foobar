@@ -1,13 +1,11 @@
 'use strict';
 
 // ========================================================================================
-// 🔹 TOP PANEL - CLEAN VERSION (kept to your structure) + minimal shims for menu helpers
+// TOP PANEL - CLEAN VERSION (kept to your structure)
 // ========================================================================================
 
-
-
 // ========================================================================================
-// 🔹 CONFIGURATION
+// CONFIGURATION
 // ========================================================================================
 
 var topPanel_Config = {
@@ -53,7 +51,7 @@ var topPanel_Config = {
 };
 
 // ========================================================================================
-// 🔹 STATE VARIABLES
+// STATE VARIABLES
 // ========================================================================================
 
 var topPanel_State = {
@@ -65,65 +63,65 @@ var topPanel_State = {
 };
 
 // ========================================================================================
-// 🔹 INITIALIZATION
+// INITIALIZATION
 // ========================================================================================
 
 function topPanel_init() {
-    console.log('topPanel_init');
-	if (topPanel_State.initialized) return;
-    topPanel_createButtons();
+
+    if (topPanel_State.initialized) return;
+    topPanel_createButtons(panelSizes);
     topPanel_State.initialized = true;
-	console.log("    Top Panel - Initialized");
+    console.log('    Top Panel:                                   Initialized');
 }
 
-function topPanel_createButtons() {
-    console.log('topPanel_createButtons);'); 
-	
-	if (!panelSizes || !panelSizes.topPanel_center_X) return;
+function topPanel_createButtons(psizes) {
+
+    var S = psizes || panelSizes;
+    if (!S || !S.topPanel_center_X) return;
 
     // reset container + our id map
     topPanel_State.buttons = new _buttons();
-    topPanel_State.buttons.buttons = [];     // <-- must be an array
-    topPanel_State.map = {};                 // <-- id -> button reference
+    topPanel_State.buttons.buttons = []; // _buttons expects an array
+    topPanel_State.map = {};             // id -> button reference
 
     var totalButtons = topPanel_Config.buttonDefinitions.length;
     var totalWidth = (totalButtons * topPanel_Config.buttonSize) + ((totalButtons - 1) * topPanel_Config.buttonSpacing);
-    var startX = panelSizes.topPanel_center_X - (totalWidth / 2);
-    var buttonY = panelSizes.topPanel_center_Y - (topPanel_Config.buttonSize / 2);
+    var startX = S.topPanel_center_X - (totalWidth / 2);
+    var buttonY = S.topPanel_center_Y - (topPanel_Config.buttonSize / 2);
     var currentX = startX;
 
     for (var i = 0; i < topPanel_Config.buttonDefinitions.length; i++) {
         var def = topPanel_Config.buttonDefinitions[i];
         var imgPath = fb.ComponentPath + topPanel_Config.skinPath;
         var img = (def.id === 'play') ? topPanel_getPlayPauseImage() : _img(imgPath + def.img);
-        if (!img) { currentX += topPanel_Config.buttonSize + topPanel_Config.buttonSpacing; continue; }
+        if (!img) {
+            currentX += topPanel_Config.buttonSize + topPanel_Config.buttonSpacing;
+            continue;
+        }
 
         var btnObj = new _button(
             currentX, buttonY,
             topPanel_Config.buttonSize, topPanel_Config.buttonSize,
-            { normal: img, hover: img, down: img },   // safe: use same img for all states
+            { normal: img, hover: img, down: img }, // reuse same image for states
             def.action,
             def.tooltip
         );
 
-        topPanel_State.buttons.buttons.push(btnObj);  // <-- add to container array (so .paint works)
-        topPanel_State.map[def.id] = btnObj;          // <-- keep an id map for quick access (labels, play/pause)
+        topPanel_State.buttons.buttons.push(btnObj);
+        topPanel_State.map[def.id] = btnObj;
 
         currentX += topPanel_Config.buttonSize + topPanel_Config.buttonSpacing;
     }
-
-    // (optional) quick sanity log:
-    // console.log('TopPanel buttons:', topPanel_State.buttons.buttons.length);
 }
 
 // ========================================================================================
-// 🔹 BUTTON HELPER FUNCTIONS
+// BUTTON HELPER FUNCTIONS
 // ========================================================================================
 
 function topPanel_getPlayPauseImage() {
     var imgPath = fb.ComponentPath + topPanel_Config.skinPath;
     var isPlaying = fb.IsPlaying && !fb.IsPaused;
-    var imgName = isPlaying ? "bt_pause.png" : "bt_play.png";
+    var imgName = isPlaying ? 'bt_pause.png' : 'bt_play.png';
     return _img(imgPath + imgName);
 }
 
@@ -141,31 +139,27 @@ function topPanel_updatePlayPauseButton() {
 }
 
 // ========================================================================================
-// 🔹 PAINT FUNCTIONS
+// PAINT FUNCTIONS
 // ========================================================================================
 
 function topPanel_paint(gr, panelSizes, uiFont, uiColors) {
-   
-	console.log("✅ pain?");
-   if (!topPanel_State.initialized) topPanel_init();
-    
+    if (!topPanel_State.initialized) topPanel_init();
+
     gr.FillSolidRect(
-        panelSizes.topPanel_X, panelSizes.topPanel_Y, 
-        panelSizes.topPanel_W, panelSizes.topPanel_H, 
-        (uiColors && (uiColors.background_top || uiColors.background)) || _RGB(35,35,35)
+        panelSizes.topPanel_X, panelSizes.topPanel_Y,
+        panelSizes.topPanel_W, panelSizes.topPanel_H,
+        (uiColors && (uiColors.background_top || uiColors.background)) || _RGB(35, 35, 35)
     );
-    
+
     if (topPanel_Config.showButtons) {
         topPanel_paintButtons(gr, uiFont, uiColors);
     }
 }
 
 function topPanel_paintButtons(gr, uiFont, uiColors) {
-    console.log("✅ painbutton?");
-	
-	if (!topPanel_State.buttons || !topPanel_State.buttons.buttons) return;
+    if (!topPanel_State.buttons || !topPanel_State.buttons.buttons) return;
     topPanel_State.buttons.paint(gr);
-    
+
     if (topPanel_Config.showLabels) {
         topPanel_paintButtonLabels(gr, uiFont, uiColors);
     }
@@ -177,6 +171,7 @@ function topPanel_paintButtonLabels(gr, uiFont, uiColors) {
         var def = topPanel_Config.buttonDefinitions[i];
         var btn = topPanel_State.map[def.id];
         if (!btn) continue;
+
         var labelY = btn.y + topPanel_Config.labelOffset;
         gr.GdiDrawText(
             def.tooltip, uiFont.default, uiColors.secondaryText,
@@ -187,7 +182,7 @@ function topPanel_paintButtonLabels(gr, uiFont, uiColors) {
 }
 
 // ========================================================================================
-// 🔹 MENU SYSTEM
+// MENU SYSTEM (menu is built in includes/rightclick_menu.js, like middle panel)
 // ========================================================================================
 
 function topPanel_showMenu(x, y) {
@@ -200,31 +195,31 @@ function topPanel_showMenu(x, y) {
 
 function topPanel_handleMenuResult(id) {
     if (id === 0) return;
-    
+
     switch (id) {
         case 2100: topPanel_Config.showButtons = !topPanel_Config.showButtons; topPanel_repaint(); break;
         case 2101: topPanel_Config.showLabels = !topPanel_Config.showLabels; topPanel_repaint(); break;
-        
-        case 2110: topPanel_Config.buttonSize = 30; topPanel_createButtons(); topPanel_repaint(); break;
-        case 2111: topPanel_Config.buttonSize = 40; topPanel_createButtons(); topPanel_repaint(); break;
-        case 2112: topPanel_Config.buttonSize = 50; topPanel_createButtons(); topPanel_repaint(); break;
-        case 2113: topPanel_Config.buttonSize = 60; topPanel_createButtons(); topPanel_repaint(); break;
-        
-        case 2120: topPanel_Config.buttonSpacing = 5;  topPanel_createButtons(); topPanel_repaint(); break;
-        case 2121: topPanel_Config.buttonSpacing = 10; topPanel_createButtons(); topPanel_repaint(); break;
-        case 2122: topPanel_Config.buttonSpacing = 15; topPanel_createButtons(); topPanel_repaint(); break;
-        case 2123: topPanel_Config.buttonSpacing = 20; topPanel_createButtons(); topPanel_repaint(); break;
+
+        case 2110: topPanel_Config.buttonSize = 30; topPanel_createButtons(panelSizes); topPanel_repaint(); break;
+        case 2111: topPanel_Config.buttonSize = 40; topPanel_createButtons(panelSizes); topPanel_repaint(); break;
+        case 2112: topPanel_Config.buttonSize = 50; topPanel_createButtons(panelSizes); topPanel_repaint(); break;
+        case 2113: topPanel_Config.buttonSize = 60; topPanel_createButtons(panelSizes); topPanel_repaint(); break;
+
+        case 2120: topPanel_Config.buttonSpacing = 5;  topPanel_createButtons(panelSizes); topPanel_repaint(); break;
+        case 2121: topPanel_Config.buttonSpacing = 10; topPanel_createButtons(panelSizes); topPanel_repaint(); break;
+        case 2122: topPanel_Config.buttonSpacing = 15; topPanel_createButtons(panelSizes); topPanel_repaint(); break;
+        case 2123: topPanel_Config.buttonSpacing = 20; topPanel_createButtons(panelSizes); topPanel_repaint(); break;
     }
 }
 
 // ========================================================================================
-// 🔹 EVENT HANDLERS
+// EVENT HANDLERS
 // ========================================================================================
 
 function topPanel_onMouseMove(x, y) {
     topPanel_State.mouseX = x;
     topPanel_State.mouseY = y;
-    
+
     if (topPanel_State.buttons) {
         return topPanel_State.buttons.move(x, y);
     }
@@ -255,17 +250,17 @@ function topPanel_onMouseLeave() {
 }
 
 // ========================================================================================
-// 🔹 UTILITY FUNCTIONS
+// UTILITY FUNCTIONS
 // ========================================================================================
 
 function topPanel_isInBounds(x, y) {
-    return panelSizes && 
-           x >= panelSizes.topPanel_X && x <= panelSizes.topPanel_X + panelSizes.topPanel_W &&
-           y >= panelSizes.topPanel_Y && y <= panelSizes.topPanel_Y + panelSizes.topPanel_H;
+    return panelSizes &&
+        x >= panelSizes.topPanel_X && x <= panelSizes.topPanel_X + panelSizes.topPanel_W &&
+        y >= panelSizes.topPanel_Y && y <= panelSizes.topPanel_Y + panelSizes.topPanel_H;
 }
 
 function topPanel_refresh() {
-    topPanel_createButtons();
+    topPanel_createButtons(panelSizes);
     topPanel_repaint();
 }
 
@@ -274,7 +269,7 @@ function topPanel_repaint() {
 }
 
 // ========================================================================================
-// 🔹 EXPORTS (for main.js integration)
+// EXPORTS (for main.js integration)
 // ========================================================================================
 
 function paintTopPanelContent(gr, panelSizes, uiFont, uiColors) {
@@ -297,35 +292,17 @@ function topPanel_on_mouse_leave() {
     topPanel_onMouseLeave();
 }
 
-function handleTopPanelMouseMove(x, y) {
-    return topPanel_on_mouse_move(x, y);
-}
-
-function handleTopPanelMouseDown(x, y) {
-    return topPanel_on_mouse_lbtn_up(x, y);
-}
-
-function handleTopPanelMouseLeave() {
-    topPanel_on_mouse_leave();
-}
-
-function repositionButtons_top() {
-    if (topPanel_State.initialized && MainApp && MainApp.initialized) {
-        topPanel_createButtons();
-    }
-}
-
-function createTopButtonsAfterLayout() {
+// Used by main.js on init/resize (these now accept optional sizes)
+function initializeTopPanel(pSizes) {
+    if (pSizes) panelSizes = pSizes;
     topPanel_init();
 }
 
-function initializeTopPanel() {
-    topPanel_init();
-}
-
-function updateTopPanelLayout() {
+function updateTopPanelLayout(pSizes) {
+    if (pSizes) panelSizes = pSizes;
     if (topPanel_State.initialized) {
-        topPanel_createButtons();
+        topPanel_createButtons(panelSizes);
+        window.RepaintRect(panelSizes.topPanel_X, panelSizes.topPanel_Y, panelSizes.topPanel_W, panelSizes.topPanel_H);
     }
 }
 
