@@ -1,29 +1,29 @@
 // ========================================================================================
-// 🎯 MAIN.JS - PHASE 2 WITH DATA MANAGER INTEGRATION
+// 🎯 MAIN.JS - 
 // ========================================================================================
 
-// External libraries
+// External libs
 include(fb.ComponentPath + 'LM\\code\\includes\\lodash.min.js');
 include(fb.ComponentPath + 'LM\\code\\includes\\helpers.js');
 
-// Utility modules  
+// Data / utils
 include(fb.ComponentPath + 'LM\\code\\includes\\rightclick_menu.js');
-
-// Data manager (BEFORE panels)
 include(fb.ComponentPath + 'LM\\code\\includes\\albumart.js');
 include(fb.ComponentPath + 'LM\\code\\includes\\data_manager.js');
 
-// Panel modules (AFTER data manager)
+
+
+// Panels
+include(fb.ComponentPath + 'LM\\code\\scripts\\top_panel.js');    // <— top panel
 include(fb.ComponentPath + 'LM\\code\\scripts\\left_panel.js');
 include(fb.ComponentPath + 'LM\\code\\scripts\\middle_panel.js');
 include(fb.ComponentPath + 'LM\\code\\scripts\\bottom_panel.js');
 
+console.log("✅ includes:                                    READY");       
+
 // ========================================================================================
 // 🔹 IMPROVED TITLEFORMAT MANAGER
 // ========================================================================================
-console.log("createPanelMenu available:", typeof createPanelMenu);
-console.log("createMenuItem available:", typeof createMenuItem);
-console.log("createMenuSection available:", typeof createMenuSection);
 
 
 var TitleFormatManager = {
@@ -79,7 +79,7 @@ var TitleFormatManager = {
             this.formats.genre = fb.TitleFormat('%genre%');
             
             this.initialized = true;
-            console.log("✅ TitleFormat Manager Initialized");
+            //console.log("✅ TitleFormat Manager Initialized");
         } catch (e) {
             console.log("❌ TitleFormat Manager init error:", e.message);
         }
@@ -176,24 +176,29 @@ var MainApp = {
         try {
             TitleFormatManager.init();
             
-            // PHASE 2: Initialize DataManager
-            DataManager.init();
             
+            DataManager.init();
+            console.log("✅ DataManager:                          READY");
             this.setupColors();
             this.setupFonts();
             this.calculateLayout();
             
             // Initialize panels
             if (typeof initializeLeftPanel === 'function') {
-                initializeLeftPanel();
+                initializeLeftPanel(this.panelSizes);
             }
             
             if (typeof initializeBottomPanel === 'function') {
                 initializeBottomPanel(this.panelSizes);
             }
             
+            if (typeof initializeTopPanel === 'function') {
+                initializeTopPanel(this.panelSizes);   
+            }
+            
+            
             this.initialized = true;
-            console.log("✅ Main App Initialized with DataManager");
+            console.log("✅ Main App - Initialized = READY ");
         } catch (e) {
             console.log("❌ Main App init error:", e.message);
         }
@@ -203,13 +208,16 @@ var MainApp = {
         this.uiColors = {
             background: _RGB(45, 45, 45),
             background_left: _RGB(35, 35, 35),
-            background_middle: _RGB(40, 40, 40),  // ADD THIS LINE
+            background_middle: _RGB(40, 40, 40),  
+            background_top: _RGB(30, 30, 30),
+            background_bottom: _RGB(30, 30, 30),            
             primaryText: _RGB(220, 220, 220),
             secondaryText: _RGB(160, 160, 160),
             highlight: _RGB(75, 110, 175),
             primary: _RGB(100, 149, 237),
             accent: _RGB(255, 165, 0)
         };
+        console.log("    uiColors:                                      Ready");
     },
     
     setupFonts: function() {
@@ -217,36 +225,55 @@ var MainApp = {
             default: gdi.Font('Segoe UI', 12, 0),
             bold: gdi.Font('Segoe UI', 12, 1),
             large: gdi.Font('Segoe UI', 14, 0),
-            small: gdi.Font('Segoe UI', 10, 0)
+            small: gdi.Font('Segoe UI', 10, 0),
+            seekbar_dur: gdi.Font('Segoe UI', 12, 0) 
         };
+        console.log("    uiFont:                                         Ready");
     },
     
     calculateLayout: function() {
-        var totalWidth = window.Width;
-        var totalHeight = window.Height;
-        
-        this.panelSizes = {
-            leftPanel_X: 0,
-            leftPanel_Y: 0,
-            leftPanel_W: Math.floor(totalWidth * 0.3),
-            leftPanel_H: totalHeight - 60,
-            
-            midPanel_X: Math.floor(totalWidth * 0.3),
-            midPanel_Y: 0,
-            midPanel_W: Math.floor(totalWidth * 0.4),
-            midPanel_H: totalHeight - 60,
-            
-            rightPanel_X: Math.floor(totalWidth * 0.7),
-            rightPanel_Y: 0,
-            rightPanel_W: totalWidth - Math.floor(totalWidth * 0.7),
-            rightPanel_H: totalHeight - 60,
-            
-            botPanel_X: 0,
-            botPanel_Y: totalHeight - 60,
-            botPanel_W: totalWidth,
-            botPanel_H: 60
+    var totalWidth  = window.Width;
+    var totalHeight = window.Height;
+
+    var TOP_H = 150;      // top panel height
+    var BOT_H = 150;      // bottom panel height (existing)
+
+    this.panelSizes = {
+        // TOP
+        topPanel_X: 0,
+        topPanel_Y: 0,
+        topPanel_W: totalWidth,
+        topPanel_H: TOP_H,
+        topPanel_center_X: Math.floor(totalWidth / 2),
+        topPanel_center_Y: Math.floor(TOP_H / 2),
+
+        // LEFT / MIDDLE / RIGHT share the center band
+        leftPanel_X: 0,
+        leftPanel_Y: TOP_H,
+        leftPanel_W: Math.floor(totalWidth * 0.3),
+        leftPanel_H: totalHeight - TOP_H - BOT_H,
+
+        midPanel_X: Math.floor(totalWidth * 0.3),
+        midPanel_Y: TOP_H,
+        midPanel_W: Math.floor(totalWidth * 0.4),
+        midPanel_H: totalHeight - TOP_H - BOT_H,
+
+        rightPanel_X: Math.floor(totalWidth * 0.7),
+        rightPanel_Y: TOP_H,
+        rightPanel_W: totalWidth - Math.floor(totalWidth * 0.7),
+        rightPanel_H: totalHeight - TOP_H - BOT_H,
+
+        // BOTTOM
+        botPanel_X: 0,
+        botPanel_Y: totalHeight - BOT_H,
+        botPanel_W: totalWidth,
+        botPanel_H: BOT_H
+       
         };
+         console.log('layout centers:', MainApp.panelSizes.topPanel_center_X, MainApp.panelSizes.topPanel_center_Y);
+    console.log("    panelSizes:                                  Ready");
     }
+    
 };
 
 // Legacy global variables (for compatibility)
@@ -259,28 +286,11 @@ var uiFont = {};
 // ========================================================================================
 // 🔹 EVENT HANDLERS WITH DATA MANAGER INTEGRATION
 // ========================================================================================
-function debugMiddlePanelValues() {
-    console.log("=== MIDDLE PANEL VALUES DEBUG ===");
-    console.log("uiFont:", typeof uiFont, uiFont);
-    console.log("uiColors:", typeof uiColors, uiColors);
-    
-    if (typeof DataManager !== 'undefined') {
-        var trackInfo = DataManager.getTrackInfo();
-        console.log("trackInfo:", trackInfo);
-        if (trackInfo) {
-            console.log("- artist:", typeof trackInfo.artist, trackInfo.artist);
-            console.log("- title:", typeof trackInfo.title, trackInfo.title);
-            console.log("- album:", typeof trackInfo.album, trackInfo.album);
-        }
-    }
-    console.log("=== END DEBUG ===");
-}
 
 function on_paint(gr) {
     if (!MainApp.initialized) {
         MainApp.init();
     }
-    
     // Update legacy globals (for compatibility)
     panelSizes = MainApp.panelSizes;
     uiColors = MainApp.uiColors;
@@ -288,6 +298,10 @@ function on_paint(gr) {
     
     try {
         // Paint all panels
+        if (typeof paintTopPanelContent === 'function') {
+            paintTopPanelContent(gr, panelSizes, uiFont, uiColors);   // <-- ADD
+        }
+
         if (typeof paintLeftPanelContent === 'function') {
             paintLeftPanelContent(gr, panelSizes, uiFont, uiColors);
         }
@@ -309,8 +323,12 @@ function on_size() {
     if (MainApp.initialized) {
         MainApp.calculateLayout();
         
+        if (typeof updateTopPanelLayout === 'function') {
+            updateTopPanelLayout(MainApp.panelSizes);   
+        }
+
         if (typeof updateLeftPanelLayout === 'function') {
-            updateLeftPanelLayout();
+            updateLeftPanelLayout(MainApp.panelSizes);
         }
         
         if (typeof updateBottomPanelComponents === 'function') {
@@ -320,7 +338,7 @@ function on_size() {
 }
 
 function on_playback_new_track(metadb) {
-    // PHASE 2: Let DataManager handle track changes
+    
     DataManager.onTrackChange(metadb);
     
     // Update TitleFormatManager for legacy compatibility
@@ -376,13 +394,16 @@ function on_volume_change() {
 
 function on_mouse_move(x, y) {
     // Update mouse position for panels
+    if (typeof topPanel_on_mouse_move === 'function') {
+        topPanel_on_mouse_move(x, y);        // <-- ADD
+    }
+
     if (typeof leftPanelState !== 'undefined' && leftPanelState) {
         leftPanelState.mouseX = x;
         leftPanelState.mouseY = y;
     }
     
-    // Distribute to panel handlers
-    if (typeof middlePanel_on_mouse_move === 'function') {
+        if (typeof middlePanel_on_mouse_move === 'function') {
         middlePanel_on_mouse_move(x, y);
     }
     
@@ -398,6 +419,10 @@ function on_mouse_lbtn_down(x, y) {
 }
 
 function on_mouse_lbtn_up(x, y) {
+    if (typeof topPanel_on_mouse_lbtn_up === 'function') {
+        if (topPanel_on_mouse_lbtn_up(x, y)) return;   // <-- ADD
+    }
+
     // Try middle panel first
     if (typeof middlePanel_on_mouse_lbtn_up === 'function') {
         if (middlePanel_on_mouse_lbtn_up(x, y)) return;
@@ -422,6 +447,10 @@ function on_mouse_lbtn_dblclk(x, y) {
 }
 
 function on_mouse_rbtn_up(x, y) {
+    if (typeof topPanel_onRightClick === 'function') {
+        if (topPanel_onRightClick(x, y)) return;   
+    }
+
     // Try middle panel first
     if (typeof middlePanel_on_mouse_rbtn_up === 'function') {
         if (middlePanel_on_mouse_rbtn_up(x, y)) return;
@@ -455,6 +484,12 @@ function on_mouse_wheel(x, y, delta) {
     }
 }
 
+function on_mouse_leave() {
+    if (typeof topPanel_on_mouse_leave === 'function') {
+        topPanel_on_mouse_leave();
+    }
+}
+
 // ========================================================================================
 // 🔹 DATA MANAGER INTEGRATION HELPERS
 // ========================================================================================
@@ -483,4 +518,4 @@ function getCurrentTrackInfo() {
 // Initialize when script loads
 MainApp.init();
 
-console.log("✅ Main.js Phase 2 Loaded with DataManager Integration");
+console.log("✅ Main module - ready");
