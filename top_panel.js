@@ -1,8 +1,10 @@
 'use strict';
 
 // ========================================================================================
-// 🔹 TOP PANEL - CLEAN VERSION WITHOUT SYNTAX ERRORS
+// 🔹 TOP PANEL - CLEAN VERSION (kept to your structure) + minimal shims for menu helpers
 // ========================================================================================
+
+
 
 // ========================================================================================
 // 🔹 CONFIGURATION
@@ -67,47 +69,51 @@ var topPanel_State = {
 // ========================================================================================
 
 function topPanel_init() {
-    if (topPanel_State.initialized) return;
-    
+    console.log('topPanel_init');
+	if (topPanel_State.initialized) return;
     topPanel_createButtons();
     topPanel_State.initialized = true;
+	console.log("    Top Panel - Initialized");
 }
 
 function topPanel_createButtons() {
-    if (!panelSizes || !panelSizes.topPanel_center_X) return;
-    
+    console.log('topPanel_createButtons);'); 
+	
+	if (!panelSizes || !panelSizes.topPanel_center_X) return;
+
+    // reset container + our id map
     topPanel_State.buttons = new _buttons();
-    topPanel_State.buttons.buttons = {};
-    
+    topPanel_State.buttons.buttons = [];     // <-- must be an array
+    topPanel_State.map = {};                 // <-- id -> button reference
+
     var totalButtons = topPanel_Config.buttonDefinitions.length;
     var totalWidth = (totalButtons * topPanel_Config.buttonSize) + ((totalButtons - 1) * topPanel_Config.buttonSpacing);
     var startX = panelSizes.topPanel_center_X - (totalWidth / 2);
     var buttonY = panelSizes.topPanel_center_Y - (topPanel_Config.buttonSize / 2);
     var currentX = startX;
-    
+
     for (var i = 0; i < topPanel_Config.buttonDefinitions.length; i++) {
-        var btn = topPanel_Config.buttonDefinitions[i];
+        var def = topPanel_Config.buttonDefinitions[i];
         var imgPath = fb.ComponentPath + topPanel_Config.skinPath;
-        var img = null;
-        
-        if (btn.id === 'play') {
-            img = topPanel_getPlayPauseImage();
-        } else {
-            img = _img(imgPath + btn.img);
-        }
-        
-        if (img) {
-            topPanel_State.buttons.buttons[btn.id] = new _button(
-                currentX, buttonY, 
-                topPanel_Config.buttonSize, topPanel_Config.buttonSize,
-                { normal: img },
-                btn.action,
-                btn.tooltip
-            );
-        }
-        
+        var img = (def.id === 'play') ? topPanel_getPlayPauseImage() : _img(imgPath + def.img);
+        if (!img) { currentX += topPanel_Config.buttonSize + topPanel_Config.buttonSpacing; continue; }
+
+        var btnObj = new _button(
+            currentX, buttonY,
+            topPanel_Config.buttonSize, topPanel_Config.buttonSize,
+            { normal: img, hover: img, down: img },   // safe: use same img for all states
+            def.action,
+            def.tooltip
+        );
+
+        topPanel_State.buttons.buttons.push(btnObj);  // <-- add to container array (so .paint works)
+        topPanel_State.map[def.id] = btnObj;          // <-- keep an id map for quick access (labels, play/pause)
+
         currentX += topPanel_Config.buttonSize + topPanel_Config.buttonSpacing;
     }
+
+    // (optional) quick sanity log:
+    // console.log('TopPanel buttons:', topPanel_State.buttons.buttons.length);
 }
 
 // ========================================================================================
@@ -127,11 +133,8 @@ function topPanel_togglePlayPause() {
 }
 
 function topPanel_updatePlayPauseButton() {
-    if (!topPanel_State.buttons || !topPanel_State.buttons.buttons || !topPanel_State.buttons.buttons.play) {
-        return;
-    }
-    
-    var btn = topPanel_State.buttons.buttons.play;
+    var btn = topPanel_State.map && topPanel_State.map.play;
+    if (!btn) return;
     btn.img_normal = topPanel_getPlayPauseImage();
     btn.img = btn.img_normal;
     window.RepaintRect(btn.x, btn.y, btn.w, btn.h);
@@ -142,11 +145,15 @@ function topPanel_updatePlayPauseButton() {
 // ========================================================================================
 
 function topPanel_paint(gr, panelSizes, uiFont, uiColors) {
-    if (!topPanel_State.initialized) topPanel_init();
+   
+	console.log("✅ pain?");
+   if (!topPanel_State.initialized) topPanel_init();
     
-    gr.FillSolidRect(panelSizes.topPanel_X, panelSizes.topPanel_Y, 
-                     panelSizes.topPanel_W, panelSizes.topPanel_H, 
-                     uiColors.background_top);
+    gr.FillSolidRect(
+        panelSizes.topPanel_X, panelSizes.topPanel_Y, 
+        panelSizes.topPanel_W, panelSizes.topPanel_H, 
+        (uiColors && (uiColors.background_top || uiColors.background)) || _RGB(35,35,35)
+    );
     
     if (topPanel_Config.showButtons) {
         topPanel_paintButtons(gr, uiFont, uiColors);
@@ -154,8 +161,9 @@ function topPanel_paint(gr, panelSizes, uiFont, uiColors) {
 }
 
 function topPanel_paintButtons(gr, uiFont, uiColors) {
-    if (!topPanel_State.buttons || !topPanel_State.buttons.buttons) return;
-    
+    console.log("✅ painbutton?");
+	
+	if (!topPanel_State.buttons || !topPanel_State.buttons.buttons) return;
     topPanel_State.buttons.paint(gr);
     
     if (topPanel_Config.showLabels) {
@@ -164,18 +172,17 @@ function topPanel_paintButtons(gr, uiFont, uiColors) {
 }
 
 function topPanel_paintButtonLabels(gr, uiFont, uiColors) {
+    if (!topPanel_State.map) return;
     for (var i = 0; i < topPanel_Config.buttonDefinitions.length; i++) {
-        var btnConfig = topPanel_Config.buttonDefinitions[i];
-        var btn = topPanel_State.buttons.buttons[btnConfig.id];
-        
-        if (btn) {
-            var labelY = btn.y + topPanel_Config.labelOffset;
-            gr.GdiDrawText(
-                btnConfig.tooltip, uiFont.default, uiColors.secondaryText,
-                btn.x, labelY, btn.w, 20,
-                DT_CENTER | DT_VCENTER
-            );
-        }
+        var def = topPanel_Config.buttonDefinitions[i];
+        var btn = topPanel_State.map[def.id];
+        if (!btn) continue;
+        var labelY = btn.y + topPanel_Config.labelOffset;
+        gr.GdiDrawText(
+            def.tooltip, uiFont.default, uiColors.secondaryText,
+            btn.x, labelY, btn.w, 20,
+            DT_CENTER | DT_VCENTER
+        );
     }
 }
 
@@ -184,44 +191,11 @@ function topPanel_paintButtonLabels(gr, uiFont, uiColors) {
 // ========================================================================================
 
 function topPanel_showMenu(x, y) {
-    var menu = {
-        title: 'Top Panel',
-        sections: [
-            {
-                name: 'Button Settings',
-                subsections: [
-                    {
-                        name: 'Display Options',
-                        items: [
-                            createMenuItem(2100, 'Show Buttons', 'checkbox', { checked: topPanel_Config.showButtons }),
-                            createMenuItem(2101, 'Show Button Labels', 'checkbox', { checked: topPanel_Config.showLabels })
-                        ]
-                    },
-                    {
-                        name: 'Button Size',
-                        items: [
-                            createMenuItem(2110, 'Small (30px)', 'radio', { group: 'buttonsize', checked: topPanel_Config.buttonSize === 30 }),
-                            createMenuItem(2111, 'Medium (40px)', 'radio', { group: 'buttonsize', checked: topPanel_Config.buttonSize === 40 }),
-                            createMenuItem(2112, 'Large (50px)', 'radio', { group: 'buttonsize', checked: topPanel_Config.buttonSize === 50 }),
-                            createMenuItem(2113, 'Extra Large (60px)', 'radio', { group: 'buttonsize', checked: topPanel_Config.buttonSize === 60 })
-                        ]
-                    },
-                    {
-                        name: 'Button Spacing',
-                        items: [
-                            createMenuItem(2120, 'Tight (5px)', 'radio', { group: 'buttonspacing', checked: topPanel_Config.buttonSpacing === 5 }),
-                            createMenuItem(2121, 'Normal (10px)', 'radio', { group: 'buttonspacing', checked: topPanel_Config.buttonSpacing === 10 }),
-                            createMenuItem(2122, 'Wide (15px)', 'radio', { group: 'buttonspacing', checked: topPanel_Config.buttonSpacing === 15 }),
-                            createMenuItem(2123, 'Extra Wide (20px)', 'radio', { group: 'buttonspacing', checked: topPanel_Config.buttonSpacing === 20 })
-                        ]
-                    }
-                ]
-            }
-        ]
-    };
-    
-    var result = createPanelMenu(menu, x, y);
-    if (result > 0) topPanel_handleMenuResult(result);
+    if (!topPanel_isInBounds(x, y)) return false;
+    if (typeof createTopPanelMenu === 'function') {
+        return createTopPanelMenu(topPanel_Config, x, y);
+    }
+    return false;
 }
 
 function topPanel_handleMenuResult(id) {
@@ -236,7 +210,7 @@ function topPanel_handleMenuResult(id) {
         case 2112: topPanel_Config.buttonSize = 50; topPanel_createButtons(); topPanel_repaint(); break;
         case 2113: topPanel_Config.buttonSize = 60; topPanel_createButtons(); topPanel_repaint(); break;
         
-        case 2120: topPanel_Config.buttonSpacing = 5; topPanel_createButtons(); topPanel_repaint(); break;
+        case 2120: topPanel_Config.buttonSpacing = 5;  topPanel_createButtons(); topPanel_repaint(); break;
         case 2121: topPanel_Config.buttonSpacing = 10; topPanel_createButtons(); topPanel_repaint(); break;
         case 2122: topPanel_Config.buttonSpacing = 15; topPanel_createButtons(); topPanel_repaint(); break;
         case 2123: topPanel_Config.buttonSpacing = 20; topPanel_createButtons(); topPanel_repaint(); break;
@@ -359,4 +333,4 @@ function updatePlayPauseButton() {
     topPanel_updatePlayPauseButton();
 }
 
-console.log("✅ Top Panel Module Ready");
+console.log('    Top Panel Module:                      Ready');
