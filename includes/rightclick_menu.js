@@ -287,6 +287,61 @@ function createMiddlePanelMenu(config, x, y, callbacks) {
     });
 }
 
+
+function createTopPanelMenu(config, x, y) {
+    try {
+        var menu = window.CreatePopupMenu();
+
+        // Display Options
+        var displaySub = window.CreatePopupMenu();
+        displaySub.AppendMenuItem(MF_STRING, 2100, 'Show Buttons');
+        if (config.showButtons) displaySub.CheckMenuItem(2100, true);
+        displaySub.AppendMenuItem(MF_STRING, 2101, 'Show Button Labels');
+        if (config.showLabels) displaySub.CheckMenuItem(2101, true);
+        displaySub.AppendTo(menu, MF_STRING, 'Display Options');
+
+        // Button Size
+        var sizeSub = window.CreatePopupMenu();
+        var sizeOpts = [
+            { id: 2110, text: 'Small (30px)',  val: 30 },
+            { id: 2111, text: 'Medium (40px)', val: 40 },
+            { id: 2112, text: 'Large (50px)',  val: 50 },
+            { id: 2113, text: 'Extra Large (60px)', val: 60 }
+        ];
+        for (var i = 0; i < sizeOpts.length; i++) {
+            sizeSub.AppendMenuItem(MF_STRING, sizeOpts[i].id, sizeOpts[i].text);
+            if (config.buttonSize === sizeOpts[i].val) sizeSub.CheckMenuItem(sizeOpts[i].id, true);
+        }
+        sizeSub.AppendTo(menu, MF_STRING, 'Button Size');
+
+        // Button Spacing
+        var spacingSub = window.CreatePopupMenu();
+        var spaceOpts = [
+            { id: 2120, text: 'Tight (5px)',   val: 5  },
+            { id: 2121, text: 'Normal (10px)', val: 10 },
+            { id: 2122, text: 'Wide (15px)',   val: 15 },
+            { id: 2123, text: 'Extra Wide (20px)', val: 20 }
+        ];
+        for (var j = 0; j < spaceOpts.length; j++) {
+            spacingSub.AppendMenuItem(MF_STRING, spaceOpts[j].id, spaceOpts[j].text);
+            if (config.buttonSpacing === spaceOpts[j].val) spacingSub.CheckMenuItem(spaceOpts[j].id, true);
+        }
+        spacingSub.AppendTo(menu, MF_STRING, 'Button Spacing');
+
+        // Show menu and delegate the result to the top-panel handler (same flow as middle panel)
+        var result = menu.TrackPopupMenu(x, y);
+        if (typeof topPanel_handleMenuResult === 'function') {
+            return topPanel_handleMenuResult(result);
+        }
+        return result !== 0;
+    } catch (e) {
+        console.log('❌ TopPanel menu error:', e.message || e);
+        return false;
+    }
+}
+
+
+
 /**
  * Simple menu creator for other panels that might need basic menus
  */
@@ -360,4 +415,4 @@ function setConfigProperty(config, property, value) {
     return true;
 }
 
-console.log("✅ Right-Click Menu System Ready");
+console.log("    Right-Click Menu Module Ready");
