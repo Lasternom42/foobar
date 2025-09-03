@@ -34,6 +34,12 @@ var bottomPanel_Config = {
     volumeTextHeight: 30
 };
 
+var bottomPanel_Config = bottomPanel_Config || {};
+if (typeof bottomPanel_Config.seekbarThickness    === 'undefined') bottomPanel_Config.seekbarThickness    = 4;
+if (typeof bottomPanel_Config.volumeThickness     === 'undefined') bottomPanel_Config.volumeThickness     = 4;
+if (typeof bottomPanel_Config.showTimeLabels      === 'undefined') bottomPanel_Config.showTimeLabels      = true;
+if (typeof bottomPanel_Config.seekbarWidthPercent === 'undefined') bottomPanel_Config.seekbarWidthPercent = 80;
+
 // ========================================================================================
 // 🔹 STATE VARIABLES
 // ========================================================================================
@@ -146,63 +152,52 @@ function bottomPanel_paintVolumeBar(gr, uiFont, uiColors) {
 // ========================================================================================
 
 function bottomPanel_showMenu(x, y) {
-    var menu = {
-        title: 'Bottom Panel',
-        sections: [
-            {
-                name: 'Layout Settings',
-                subsections: [
-                    {
-                        name: 'Component Width',
-                        items: [
-                            createMenuItem(3100, 'Seekbar 60% / Volume 40%', 'radio', { group: 'layout', checked: bottomPanel_Config.seekbarWidthPercent === 60 }),
-                            createMenuItem(3101, 'Seekbar 70% / Volume 30%', 'radio', { group: 'layout', checked: bottomPanel_Config.seekbarWidthPercent === 70 }),
-                            createMenuItem(3102, 'Seekbar 80% / Volume 20%', 'radio', { group: 'layout', checked: bottomPanel_Config.seekbarWidthPercent === 80 })
-                        ]
-                    },
-                    {
-                        name: 'Component Height',
-                        items: [
-                            createMenuItem(3110, 'Small (25px)', 'radio', { group: 'height', checked: bottomPanel_Config.componentHeight === 25 }),
-                            createMenuItem(3111, 'Medium (30px)', 'radio', { group: 'height', checked: bottomPanel_Config.componentHeight === 30 }),
-                            createMenuItem(3112, 'Large (35px)', 'radio', { group: 'height', checked: bottomPanel_Config.componentHeight === 35 }),
-                            createMenuItem(3113, 'Extra Large (40px)', 'radio', { group: 'height', checked: bottomPanel_Config.componentHeight === 40 })
-                        ]
-                    },
-                    {
-                        name: 'Spacing',
-                        items: [
-                            createMenuItem(3120, 'Tight (30px)', 'radio', { group: 'spacing', checked: bottomPanel_Config.componentSpacing === 30 }),
-                            createMenuItem(3121, 'Normal (45px)', 'radio', { group: 'spacing', checked: bottomPanel_Config.componentSpacing === 45 }),
-                            createMenuItem(3122, 'Wide (60px)', 'radio', { group: 'spacing', checked: bottomPanel_Config.componentSpacing === 60 })
-                        ]
-                    }
-                ]
-            }
-        ]
-    };
-    
-    var result = createPanelMenu(menu, x, y);
-    if (result > 0) bottomPanel_handleMenuResult(result);
+    if (typeof bottomPanel_isInBounds === 'function' && !bottomPanel_isInBounds(x, y)) return false;
+    if (typeof createBottomPanelMenu === 'function') {
+        return createBottomPanelMenu(bottomPanel_Config, x, y);
+    }
+    return false;
 }
 
 function bottomPanel_handleMenuResult(id) {
-    if (id === 0) return;
-    
+    if (!id) return false;
+
     switch (id) {
-        case 3100: bottomPanel_Config.seekbarWidthPercent = 60; bottomPanel_Config.volumeWidthPercent = 40; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        case 3101: bottomPanel_Config.seekbarWidthPercent = 70; bottomPanel_Config.volumeWidthPercent = 30; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        case 3102: bottomPanel_Config.seekbarWidthPercent = 80; bottomPanel_Config.volumeWidthPercent = 20; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        
-        case 3110: bottomPanel_Config.componentHeight = 25; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        case 3111: bottomPanel_Config.componentHeight = 30; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        case 3112: bottomPanel_Config.componentHeight = 35; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        case 3113: bottomPanel_Config.componentHeight = 40; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        
-        case 3120: bottomPanel_Config.componentSpacing = 30; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        case 3121: bottomPanel_Config.componentSpacing = 45; bottomPanel_createComponents(); bottomPanel_repaint(); break;
-        case 3122: bottomPanel_Config.componentSpacing = 60; bottomPanel_createComponents(); bottomPanel_repaint(); break;
+        // Seekbar thickness
+        case 3110: bottomPanel_Config.seekbarThickness = 2; break;
+        case 3111: bottomPanel_Config.seekbarThickness = 4; break;
+        case 3112: bottomPanel_Config.seekbarThickness = 6; break;
+
+        // Time labels
+        case 3101: bottomPanel_Config.showTimeLabels = !bottomPanel_Config.showTimeLabels; break;
+
+        // Volume thickness
+        case 3125: bottomPanel_Config.volumeThickness = 2; break;
+        case 3126: bottomPanel_Config.volumeThickness = 4; break;
+        case 3127: bottomPanel_Config.volumeThickness = 6; break;
+
+        // Layout split (seekbar% / volume%)
+        case 3130: bottomPanel_Config.seekbarWidthPercent = 90; break;
+        case 3131: bottomPanel_Config.seekbarWidthPercent = 80; break;
+        case 3132: bottomPanel_Config.seekbarWidthPercent = 70; break;
+        case 3133: bottomPanel_Config.seekbarWidthPercent = 60; break;
+
+        default:
+            return false;
     }
+
+    // Let your layout recalc/resync everything
+    if (typeof updateBottomPanelComponents === 'function') {
+        updateBottomPanelComponents(panelSizes);
+    }
+
+    // 🔸 Always force a repaint of the bottom band so changes show immediately
+    if (panelSizes) {
+        window.RepaintRect(panelSizes.botPanel_X, panelSizes.botPanel_Y, panelSizes.botPanel_W, panelSizes.botPanel_H);
+    } else {
+        window.Repaint();
+    }
+    return true;
 }
 
 // ========================================================================================
@@ -224,11 +219,8 @@ function bottomPanel_onMouseMove(x, y) {
 }
 
 function bottomPanel_onRightClick(x, y) {
-    if (bottomPanel_isInBounds(x, y)) {
-        bottomPanel_showMenu(x, y);
-        return true;
-    }
-    return false;
+    // If your file already has bottomPanel_on_mouse_rbtn_up calling this, keep both.
+    return bottomPanel_showMenu(x, y);
 }
 
 function bottomPanel_onLeftDown(x, y) {
