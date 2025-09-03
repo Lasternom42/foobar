@@ -340,7 +340,75 @@ function createTopPanelMenu(config, x, y) {
     }
 }
 
+// ========================================================================================
+// 🔹 BOTTOM PANEL MENU (mirrors top-panel flow)
+// ========================================================================================
+function createBottomPanelMenu(config, x, y) {
+    try {
+        var menu = window.CreatePopupMenu();
 
+        // --- Seekbar ---
+        var seekSub = window.CreatePopupMenu();
+
+        // Thickness (2, 4, 6) — coerce & snap to allowed set
+        var seekThickSub = window.CreatePopupMenu();
+        var sTh = parseInt(config.seekbarThickness, 10);
+        if (sTh !== 2 && sTh !== 4 && sTh !== 6) sTh = 4; // default
+
+        seekThickSub.AppendMenuItem(MF_STRING, 3110, '2 px');
+        seekThickSub.AppendMenuItem(MF_STRING, 3111, '4 px');
+        seekThickSub.AppendMenuItem(MF_STRING, 3112, '6 px');
+        var sChoice = (sTh === 2) ? 3110 : (sTh === 6) ? 3112 : 3111;
+        seekThickSub.CheckMenuRadioItem(3110, 3112, sChoice);
+        seekThickSub.AppendTo(seekSub, MF_STRING, 'Thickness');
+
+        // Show time labels (checkbox)
+        seekSub.AppendMenuItem(MF_STRING, 3101, 'Show time labels');
+        if (!!config.showTimeLabels) seekSub.CheckMenuItem(3101, true);
+
+        seekSub.AppendTo(menu, MF_STRING, 'Seekbar');
+
+        // --- Volume ---
+        var volSub = window.CreatePopupMenu();
+
+        // Thickness (2, 4, 6) — coerce & snap
+        var volThickSub = window.CreatePopupMenu();
+        var vTh = parseInt(config.volumeThickness, 10);
+        if (vTh !== 2 && vTh !== 4 && vTh !== 6) vTh = 4; // default
+
+        volThickSub.AppendMenuItem(MF_STRING, 3125, '2 px');
+        volThickSub.AppendMenuItem(MF_STRING, 3126, '4 px');
+        volThickSub.AppendMenuItem(MF_STRING, 3127, '6 px');
+        var vChoice = (vTh === 2) ? 3125 : (vTh === 6) ? 3127 : 3126;
+        volThickSub.CheckMenuRadioItem(3125, 3127, vChoice);
+        volThickSub.AppendTo(volSub, MF_STRING, 'Thickness');
+
+        volSub.AppendTo(menu, MF_STRING, 'Volume');
+
+        // --- Layout: width split (seekbar% / volume%) — this part already worked
+        var laySub = window.CreatePopupMenu();
+        var sp = parseInt(config.seekbarWidthPercent, 10);
+        if (isNaN(sp)) sp = 80;
+        var lChoice = (sp === 90) ? 3130 : (sp === 70) ? 3132 : (sp === 60) ? 3133 : 3131;
+
+        laySub.AppendMenuItem(MF_STRING, 3130, '90% / 10%');
+        laySub.AppendMenuItem(MF_STRING, 3131, '80% / 20%');
+        laySub.AppendMenuItem(MF_STRING, 3132, '70% / 30%');
+        laySub.AppendMenuItem(MF_STRING, 3133, '60% / 40%');
+        laySub.CheckMenuRadioItem(3130, 3133, lChoice);
+        laySub.AppendTo(menu, MF_STRING, 'Layout');
+
+        // Show menu & delegate to the panel like Top panel does
+        var result = menu.TrackPopupMenu(x, y);
+        if (typeof bottomPanel_handleMenuResult === 'function') {
+            return bottomPanel_handleMenuResult(result);
+        }
+        return result !== 0;
+    } catch (e) {
+        console.log('❌ BottomPanel menu error:', e.message || e);
+        return false;
+    }
+}
 
 /**
  * Simple menu creator for other panels that might need basic menus
