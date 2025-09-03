@@ -14,31 +14,38 @@ include(fb.ComponentPath + 'LM\\code\\includes\\volume.js');
 
 var bottomPanel_Config = {
     // Component sizing
-    seekbarWidthPercent: 70,
-    volumeWidthPercent: 30,
-    componentHeight: 30,
-    
+    seekbarWidthPercent: 80,          // <-- single source of truth
+    volumeWidthPercent: 20,           // keep in sync with seekbarWidthPercent
+    componentHeight: 50,
+
     // Spacing and margins
     marginLeft: 40,
     marginRight: 40,
     componentSpacing: 45,
-    
+
     // Visual settings
-    trackHeight: 15,
-    trackVerticalOffset: 8,
-    
+    trackHeight: 15,                  // fallback height if thickness is not set
+    trackVerticalOffset: 8,           // (only used if your paint still reads it)
+
     // Text positioning
-    timeTextVerticalOffset: -25,
-    volumeTextVerticalOffset: 15,
+    timeTextVerticalOffset: -5,
+    volumeTextVerticalOffset: 35,
     timeTextHeight: 30,
-    volumeTextHeight: 30
+    volumeTextHeight: 30,
+
+    // Thickness (these override trackHeight in paint)
+    seekbarThickness: 15,
+    volumeThickness: 15,
+
+    // Labels
+    showTimeLabels: true
 };
 
-var bottomPanel_Config = bottomPanel_Config || {};
-if (typeof bottomPanel_Config.seekbarThickness    === 'undefined') bottomPanel_Config.seekbarThickness    = 4;
-if (typeof bottomPanel_Config.volumeThickness     === 'undefined') bottomPanel_Config.volumeThickness     = 4;
-if (typeof bottomPanel_Config.showTimeLabels      === 'undefined') bottomPanel_Config.showTimeLabels      = true;
-if (typeof bottomPanel_Config.seekbarWidthPercent === 'undefined') bottomPanel_Config.seekbarWidthPercent = 80;
+//var bottomPanel_Config = bottomPanel_Config || {};
+//if (typeof bottomPanel_Config.seekbarThickness    === 'undefined') bottomPanel_Config.seekbarThickness    = 15;
+//if (typeof bottomPanel_Config.volumeThickness     === 'undefined') bottomPanel_Config.volumeThickness     = 15;
+//if (typeof bottomPanel_Config.showTimeLabels      === 'undefined') bottomPanel_Config.showTimeLabels      = true;
+//if (typeof bottomPanel_Config.seekbarWidthPercent === 'undefined') bottomPanel_Config.seekbarWidthPercent = 80;
 
 // ========================================================================================
 // 🔹 STATE VARIABLES
@@ -95,56 +102,71 @@ function bottomPanel_paint(gr, panelSizes, uiFont, uiColors) {
 
 function bottomPanel_paintSeekbar(gr, uiFont, uiColors) {
     if (!bottomPanel_State.seekbar) return;
-    
-    var trackLength = fb.PlaybackLength;
-    var currentTime = fb.PlaybackTime;
+
     var seekbar = bottomPanel_State.seekbar;
-    
-    var trackColor = uiColors.primaryColor;
-    gr.FillSolidRect(seekbar.x, seekbar.y + bottomPanel_Config.trackVerticalOffset, seekbar.w, bottomPanel_Config.trackHeight, trackColor);
-    
-    if (fb.IsPlaying && trackLength > 0) {
+    var barH = bottomPanel_Config.seekbarThickness || bottomPanel_Config.trackHeight;
+    // center the bar inside the component height
+    var barY = seekbar.y + Math.floor((bottomPanel_Config.componentHeight - barH) / 2);
+
+    var trackColor = uiColors.primaryColor || uiColors.primary || uiColors.highlight;
+
+    // track
+    gr.FillSolidRect(seekbar.x, barY, seekbar.w, barH, trackColor);
+
+    if (fb.IsPlaying && fb.PlaybackLength > 0) {
         var progressWidth = seekbar.pos();
         if (progressWidth > 0) {
-            gr.FillSolidRect(seekbar.x, seekbar.y + bottomPanel_Config.trackVerticalOffset, progressWidth, bottomPanel_Config.trackHeight, uiColors.accent);
+            gr.FillSolidRect(seekbar.x, barY, progressWidth, barH, uiColors.accent || uiColors.highlight);
         }
-        
-        var currentTimeStr = utils.FormatDuration(currentTime);
-        var totalTimeStr = utils.FormatDuration(trackLength);
-        
-        gr.GdiDrawText(currentTimeStr, uiFont.seekbar_dur, uiColors.primaryText, 
-                       seekbar.x, seekbar.y + bottomPanel_Config.timeTextVerticalOffset, 100, bottomPanel_Config.timeTextHeight, DT_LEFT | DT_VCENTER);
-        
-        gr.GdiDrawText(totalTimeStr, uiFont.seekbar_dur, uiColors.primaryText, 
-                       seekbar.x + seekbar.w - 100, seekbar.y + bottomPanel_Config.timeTextVerticalOffset, 100, bottomPanel_Config.timeTextHeight, DT_RIGHT | DT_VCENTER);
+
+        if (bottomPanel_Config.showTimeLabels) {
+            var currentTimeStr = utils.FormatDuration(fb.PlaybackTime);
+            var totalTimeStr   = utils.FormatDuration(fb.PlaybackLength);
+            gr.GdiDrawText(currentTimeStr, uiFont.seekbar_dur, uiColors.primaryText,
+                           seekbar.x, seekbar.y  + bottomPanel_Config.timeTextVerticalOffset,
+                           100, bottomPanel_Config.timeTextHeight, DT_LEFT | DT_VCENTER);
+            gr.GdiDrawText(totalTimeStr, uiFont.seekbar_dur, uiColors.primaryText,
+                           seekbar.x + seekbar.w - 100, seekbar.y + bottomPanel_Config.timeTextVerticalOffset,
+                           100, bottomPanel_Config.timeTextHeight, DT_RIGHT | DT_VCENTER);
+        }
     } else {
-        gr.GdiDrawText("--:--", uiFont.seekbar_dur, uiColors.secondaryText, 
-                       seekbar.x, seekbar.y + bottomPanel_Config.timeTextVerticalOffset, 100, bottomPanel_Config.timeTextHeight, DT_LEFT | DT_VCENTER);
-        gr.GdiDrawText("--:--", uiFont.seekbar_dur, uiColors.secondaryText, 
-                       seekbar.x + seekbar.w - 100, seekbar.y + bottomPanel_Config.timeTextVerticalOffset, 100, bottomPanel_Config.timeTextHeight, DT_RIGHT | DT_VCENTER);
+        if (bottomPanel_Config.showTimeLabels) {
+            gr.GdiDrawText('--:--', uiFont.seekbar_dur, uiColors.secondaryText,
+                           seekbar.x, seekbar.y + bottomPanel_Config.timeTextVerticalOffset,
+                           100, bottomPanel_Config.timeTextHeight, DT_LEFT | DT_VCENTER);
+            gr.GdiDrawText('--:--', uiFont.seekbar_dur, uiColors.secondaryText,
+                           seekbar.x + seekbar.w - 100, seekbar.y + bottomPanel_Config.timeTextVerticalOffset,
+                           100, bottomPanel_Config.timeTextHeight, DT_RIGHT | DT_VCENTER);
+        }
     }
 }
 
 function bottomPanel_paintVolumeBar(gr, uiFont, uiColors) {
     if (!bottomPanel_State.volumebar) return;
-    
+
     var volumebar = bottomPanel_State.volumebar;
-    var trackColor = uiColors.primaryColor;
-    gr.FillSolidRect(volumebar.x, volumebar.y + bottomPanel_Config.trackVerticalOffset, volumebar.w, bottomPanel_Config.trackHeight, trackColor);
-    
+    var barH = bottomPanel_Config.volumeThickness || bottomPanel_Config.trackHeight;
+    var barY = volumebar.y + Math.floor((bottomPanel_Config.componentHeight - barH) / 2);
+
+    var trackColor = uiColors.primaryColor || uiColors.primary || uiColors.highlight;
+
+    // track
+	//gr.FillSolidRect(volumebar.x, barY, volumebar.w, barH, uiColors.accent);
+    gr.FillSolidRect(volumebar.x, barY, volumebar.w, barH, trackColor);
+
+    // fill to current volume
     var volumePos = volumebar.pos();
     if (volumePos > 0 && volumePos <= volumebar.w) {
-        gr.FillSolidRect(volumebar.x, volumebar.y + bottomPanel_Config.trackVerticalOffset, volumePos, bottomPanel_Config.trackHeight, uiColors.highlight);
+        gr.FillSolidRect(volumebar.x, barY, volumePos, barH, uiColors.highlight || uiColors.accent);
     }
-    
-    gr.GdiDrawText("VOL", uiFont.seekbar_dur, uiColors.primaryText, 
-                   volumebar.x, volumebar.y + bottomPanel_Config.timeTextVerticalOffset, 50, bottomPanel_Config.timeTextHeight, DT_CENTER | DT_VCENTER);
-    
-    var currentVolume = fb.Volume;
-    var volumeStr = currentVolume <= -100 ? "-∞ dB" : currentVolume.toFixed(1) + " dB";
-    
-    gr.GdiDrawText(volumeStr, uiFont.seekbar_dur, uiColors.secondaryText, 
-                   volumebar.x, volumebar.y + bottomPanel_Config.volumeTextVerticalOffset, volumebar.w, bottomPanel_Config.volumeTextHeight, DT_CENTER | DT_VCENTER);
+
+   
+
+    var dB = fb.Volume;
+    var volumeStr = dB <= -100 ? '-∞ dB' : dB.toFixed(1) + ' dB';
+    gr.GdiDrawText(volumeStr, uiFont.seekbar_dur, uiColors.secondaryText,
+                   volumebar.x, volumebar.y + bottomPanel_Config.volumeTextVerticalOffset,
+                   volumebar.w, bottomPanel_Config.volumeTextHeight, DT_CENTER | DT_VCENTER);
 }
 
 // ========================================================================================
@@ -164,23 +186,23 @@ function bottomPanel_handleMenuResult(id) {
 
     switch (id) {
         // Seekbar thickness
-        case 3110: bottomPanel_Config.seekbarThickness = 2; break;
-        case 3111: bottomPanel_Config.seekbarThickness = 4; break;
-        case 3112: bottomPanel_Config.seekbarThickness = 6; break;
+        case 3110: bottomPanel_Config.seekbarThickness = 5; break;
+        case 3111: bottomPanel_Config.seekbarThickness = 10; break;
+        case 3112: bottomPanel_Config.seekbarThickness = 15; break;
 
         // Time labels
         case 3101: bottomPanel_Config.showTimeLabels = !bottomPanel_Config.showTimeLabels; break;
 
         // Volume thickness
-        case 3125: bottomPanel_Config.volumeThickness = 2; break;
-        case 3126: bottomPanel_Config.volumeThickness = 4; break;
-        case 3127: bottomPanel_Config.volumeThickness = 6; break;
+        case 3125: bottomPanel_Config.volumeThickness = 5; break;
+        case 3126: bottomPanel_Config.volumeThickness = 10; break;
+        case 3127: bottomPanel_Config.volumeThickness = 15; break;
 
         // Layout split (seekbar% / volume%)
-        case 3130: bottomPanel_Config.seekbarWidthPercent = 90; break;
-        case 3131: bottomPanel_Config.seekbarWidthPercent = 80; break;
-        case 3132: bottomPanel_Config.seekbarWidthPercent = 70; break;
-        case 3133: bottomPanel_Config.seekbarWidthPercent = 60; break;
+        case 3130: bottomPanel_Config.seekbarWidthPercent = 90; bottomPanel_Config.volumeWidthPercent = 10; break;
+		case 3131: bottomPanel_Config.seekbarWidthPercent = 80; bottomPanel_Config.volumeWidthPercent = 20; break;
+		case 3132: bottomPanel_Config.seekbarWidthPercent = 70; bottomPanel_Config.volumeWidthPercent = 30; break;
+		case 3133: bottomPanel_Config.seekbarWidthPercent = 60; bottomPanel_Config.volumeWidthPercent = 40; break;
 
         default:
             return false;
