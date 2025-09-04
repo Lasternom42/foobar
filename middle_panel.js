@@ -28,7 +28,7 @@ var middlePanel_Config = {
     showTrackNumber: false,
     
     // Interaction
-    clickAction: 0,         // 0=folder, 1=properties, 2=none
+    clickAction: 2,         // 0=folder, 1=properties, 2=none
     wheelAction: 0          // 0=volume, 1=seek, 2=none
 };
 
@@ -102,7 +102,7 @@ function getArtForTrack(trackInfo) {
         var art = null;
         
         if (middlePanel_Config.artSource === 0) {
-            // Folder first, then embedded
+            // Folder first, then emb  edded
             art = utils.GetAlbumArtV2(trackInfo.metadb, 0);
             if (!art) art = utils.GetAlbumArtV2(trackInfo.metadb, 1);
         } else {
@@ -236,7 +236,7 @@ function middlePanel_initialize() {
     if (middlePanel_State.initialized) return;
     
     middlePanel_State.initialized = true;
-    console.log("✅ Middle Panel initialized with simplified AlbumArt.js");
+    console.log("✅ Middle Panel - initialized.js");
 }
 
 // ========================================================================================
@@ -369,12 +369,13 @@ function middlePanel_onRightClick(x, y) {
     
     var result = menu.TrackPopupMenu(x, y);
     
-    if (result === 1) return false; // Show Spider Monkey panel menu
+    if (result === 1) return false; // Spider Monkey shows its panel menu
     if (result === 100) { middlePanel_refresh(); return true; }
     if (result === 101) { middlePanel_clearCache(); return true; }
     
     return false;
 }
+
 
 function middlePanel_onWheel(delta) {
     switch (middlePanel_Config.wheelAction) {
@@ -445,182 +446,6 @@ function middlePanel_clearCache() {
     window.Repaint();
 }
 
-// ========================================================================================
-// 🔹 MENU SYSTEM (EXISTING WORKING CODE)
-// ========================================================================================
-
-function createAlbumArtSubmenu() {
-    var menu = window.CreatePopupMenu();
-    
-    var artSourceMenu = window.CreatePopupMenu();
-    artSourceMenu.AppendMenuItem(MF_STRING, 1100, "Folder First");
-    artSourceMenu.AppendMenuItem(MF_STRING, 1101, "Embedded First");
-    artSourceMenu.CheckMenuRadioItem(1100, 1101, middlePanel_Config.artSource === 0 ? 1100 : 1101);
-    artSourceMenu.AppendTo(menu, MF_STRING, "Art Source");
-    
-    var displayModeMenu = window.CreatePopupMenu();
-    displayModeMenu.AppendMenuItem(MF_STRING, 1110, "Fit");
-    displayModeMenu.AppendMenuItem(MF_STRING, 1111, "Fill");
-    displayModeMenu.AppendMenuItem(MF_STRING, 1112, "Stretch");
-    displayModeMenu.AppendMenuItem(MF_STRING, 1113, "Center");
-    var checkedMode = 1110 + middlePanel_Config.scaleMode;
-    displayModeMenu.CheckMenuRadioItem(1110, 1113, checkedMode);
-    displayModeMenu.AppendTo(menu, MF_STRING, "Display Mode");
-    
-    menu.AppendMenuSeparator();
-    menu.AppendMenuItem(MF_STRING, 1120, "Refresh Album Art");
-    menu.AppendMenuItem(MF_STRING, 1121, "Clear Art Cache");
-    
-    return menu;
-}
-
-function createTextDisplaySubmenu() {
-    var menu = window.CreatePopupMenu();
-    
-    var overlayMenu = window.CreatePopupMenu();
-    overlayMenu.AppendMenuItem(MF_STRING, 1200, "Show Track Info (when no art)");
-    overlayMenu.AppendMenuItem(MF_STRING, 1201, "Show Album Info Overlay");
-    overlayMenu.CheckMenuItem(1200, middlePanel_Config.showTrackInfo);
-    overlayMenu.CheckMenuItem(1201, middlePanel_Config.showAlbumInfo);
-    overlayMenu.AppendTo(menu, MF_STRING, "Overlay Settings");
-    
-    var fontSizeMenu = window.CreatePopupMenu();
-    fontSizeMenu.AppendMenuItem(MF_STRING, 1210, "Small (12)");
-    fontSizeMenu.AppendMenuItem(MF_STRING, 1211, "Medium (16)");
-    fontSizeMenu.AppendMenuItem(MF_STRING, 1212, "Large (20)");
-    fontSizeMenu.AppendMenuItem(MF_STRING, 1213, "Extra Large (24)");
-    var checkedFont = 1210;
-    switch(middlePanel_Config.fontSize) {
-        case 12: checkedFont = 1210; break;
-        case 16: checkedFont = 1211; break;
-        case 20: checkedFont = 1212; break;
-        case 24: checkedFont = 1213; break;
-    }
-    fontSizeMenu.CheckMenuRadioItem(1210, 1213, checkedFont);
-    fontSizeMenu.AppendTo(menu, MF_STRING, "Font Size");
-    
-    var positionMenu = window.CreatePopupMenu();
-    positionMenu.AppendMenuItem(MF_STRING, 1220, "Bottom");
-    positionMenu.AppendMenuItem(MF_STRING, 1221, "Top");
-    positionMenu.AppendMenuItem(MF_STRING, 1222, "Center");
-    var checkedPosition = 1220 + middlePanel_Config.overlayPosition;
-    positionMenu.CheckMenuRadioItem(1220, 1222, checkedPosition);
-    positionMenu.AppendTo(menu, MF_STRING, "Overlay Position");
-    
-    var contentMenu = window.CreatePopupMenu();
-    contentMenu.AppendMenuItem(MF_STRING, 1230, "Show Artist");
-    contentMenu.AppendMenuItem(MF_STRING, 1231, "Show Album");
-    contentMenu.AppendMenuItem(MF_STRING, 1232, "Show Year");
-    contentMenu.AppendMenuItem(MF_STRING, 1233, "Show Track Number");
-    contentMenu.CheckMenuItem(1230, middlePanel_Config.showArtist);
-    contentMenu.CheckMenuItem(1231, middlePanel_Config.showAlbum);
-    contentMenu.CheckMenuItem(1232, middlePanel_Config.showYear);
-    contentMenu.CheckMenuItem(1233, middlePanel_Config.showTrackNumber);
-    contentMenu.AppendTo(menu, MF_STRING, "Content Options");
-    
-    return menu;
-}
-
-function createInteractionSubmenu() {
-    var menu = window.CreatePopupMenu();
-    
-    var clickMenu = window.CreatePopupMenu();
-    clickMenu.AppendMenuItem(MF_STRING, 1300, "Open Folder");
-    clickMenu.AppendMenuItem(MF_STRING, 1301, "Properties");
-    clickMenu.AppendMenuItem(MF_STRING, 1302, "None");
-    var checkedClick = 1300 + middlePanel_Config.clickAction;
-    clickMenu.CheckMenuRadioItem(1300, 1302, checkedClick);
-    clickMenu.AppendTo(menu, MF_STRING, "Click Action");
-    
-    var wheelMenu = window.CreatePopupMenu();
-    wheelMenu.AppendMenuItem(MF_STRING, 1310, "Volume");
-    wheelMenu.AppendMenuItem(MF_STRING, 1311, "Seek");
-    wheelMenu.AppendMenuItem(MF_STRING, 1312, "None");
-    var checkedWheel = 1310 + middlePanel_Config.wheelAction;
-    wheelMenu.CheckMenuRadioItem(1310, 1312, checkedWheel);
-    wheelMenu.AppendTo(menu, MF_STRING, "Mouse Wheel Action");
-    
-    return menu;
-}
-
-function middlePanel_handleMenuResult(result) {
-    if (result === 0) return false;
-    
-    try {
-        if (result === 1) {
-            return false; // Show Spider Monkey panel menu
-        }
-        
-        if (result >= 1100 && result <= 1101) {
-            middlePanel_Config.artSource = result - 1100;
-            middlePanel_refresh();
-            return true;
-        }
-        
-        if (result >= 1110 && result <= 1113) {
-            middlePanel_Config.scaleMode = result - 1110;
-            middlePanel_repaint();
-            return true;
-        }
-        
-        if (result === 1120) {
-            middlePanel_refresh();
-            return true;
-        }
-        if (result === 1121) {
-            middlePanel_clearCache();
-            return true;
-        }
-        
-        if (result >= 1200 && result <= 1201) {
-            switch(result) {
-                case 1200: middlePanel_Config.showTrackInfo = !middlePanel_Config.showTrackInfo; break;
-                case 1201: middlePanel_Config.showAlbumInfo = !middlePanel_Config.showAlbumInfo; break;
-            }
-            middlePanel_repaint();
-            return true;
-        }
-        
-        if (result >= 1210 && result <= 1213) {
-            var fontSizes = [12, 16, 20, 24];
-            middlePanel_Config.fontSize = fontSizes[result - 1210];
-            middlePanel_repaint();
-            return true;
-        }
-        
-        if (result >= 1220 && result <= 1222) {
-            middlePanel_Config.overlayPosition = result - 1220;
-            middlePanel_repaint();
-            return true;
-        }
-        
-        if (result >= 1230 && result <= 1233) {
-            switch(result) {
-                case 1230: middlePanel_Config.showArtist = !middlePanel_Config.showArtist; break;
-                case 1231: middlePanel_Config.showAlbum = !middlePanel_Config.showAlbum; break;
-                case 1232: middlePanel_Config.showYear = !middlePanel_Config.showYear; break;
-                case 1233: middlePanel_Config.showTrackNumber = !middlePanel_Config.showTrackNumber; break;
-            }
-            middlePanel_repaint();
-            return true;
-        }
-        
-        if (result >= 1300 && result <= 1302) {
-            middlePanel_Config.clickAction = result - 1300;
-            return true;
-        }
-        
-        if (result >= 1310 && result <= 1312) {
-            middlePanel_Config.wheelAction = result - 1310;
-            return true;
-        }
-        
-    } catch (e) {
-        console.log("❌ Error handling menu result:", e.message);
-    }
-    
-    return false;
-}
 
 // ========================================================================================
 // 🔹 EXPORTS FOR MAIN.JS
@@ -658,4 +483,4 @@ function middlePanel_on_metadb_changed() {
     window.Repaint();
 }
 
-console.log("✅ Middle Panel Ready - Basic Working Version");
+console.log("    Middle Panel Module:                 Ready");
