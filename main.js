@@ -23,82 +23,7 @@ console.log('✅ includes:                                    READY');
 // IMPROVED TITLEFORMAT MANAGER
 // ========================================================================================
 
-var TitleFormatManager = {
-    formats: {
-        artist: null, albumartist: null, title: null, album: null, date: null,
-        tracknumber: null, discnumber: null, totaltracks: null, length: null,
-        playback_time: null, rating: null, genre: null
-    },
-    current: {
-        artist: 'Unknown Artist', albumartist: 'Unknown Artist', title: 'Untitled',
-        album: 'Unknown Album', date: '', year: '', tracknumber: '', discnumber: '1',
-        totaltracks: '', length: '0:00', playback_time: '0:00', rating: '', genre: '',
-        path: ''
-    },
-    initialized: false,
-    init: function () {
-        if (this.initialized) return;
-        try {
-            this.formats.artist        = fb.TitleFormat('%artist%');
-            this.formats.albumartist   = fb.TitleFormat('%albumartist%');
-            this.formats.title         = fb.TitleFormat('%title%');
-            this.formats.album         = fb.TitleFormat('%album%');
-            this.formats.date          = fb.TitleFormat('%date%');
-            this.formats.tracknumber   = fb.TitleFormat('%tracknumber%');
-            this.formats.discnumber    = fb.TitleFormat('%discnumber%');
-            this.formats.totaltracks   = fb.TitleFormat('%totaltracks%');
-            this.formats.length        = fb.TitleFormat('%length%');
-            this.formats.playback_time = fb.TitleFormat('%playback_time%');
-            this.formats.rating        = fb.TitleFormat('%rating%');
-            this.formats.genre         = fb.TitleFormat('%genre%');
-            this.initialized = true;
-        } catch (e) {
-            console.log('❌ TitleFormat Manager init error:', e.message);
-        }
-    },
-    getInfo: function (metadb) {
-        if (!this.initialized) this.init();
-        if (!metadb) return this.getEmptyInfo();
-        try {
-            return {
-                artist:        this.formats.artist.EvalWithMetadb(metadb) || 'Unknown Artist',
-                albumartist:   this.formats.albumartist.EvalWithMetadb(metadb) || 'Unknown Artist',
-                title:         this.formats.title.EvalWithMetadb(metadb) || 'Untitled',
-                album:         this.formats.album.EvalWithMetadb(metadb) || 'Unknown Album',
-                date:          this.formats.date.EvalWithMetadb(metadb) || '',
-                year:          this.formats.date.EvalWithMetadb(metadb) || '',
-                tracknumber:   this.formats.tracknumber.EvalWithMetadb(metadb) || '',
-                discnumber:    this.formats.discnumber.EvalWithMetadb(metadb) || '1',
-                totaltracks:   this.formats.totaltracks.EvalWithMetadb(metadb) || '',
-                length:        this.formats.length.EvalWithMetadb(metadb) || '0:00',
-                rating:        this.formats.rating.EvalWithMetadb(metadb) || '',
-                genre:         this.formats.genre.EvalWithMetadb(metadb) || '',
-                path:          metadb.Path || ''
-            };
-        } catch (e) {
-            console.log('❌ Error getting metadb info:', e.message);
-            return this.getEmptyInfo();
-        }
-    },
-    getEmptyInfo: function () {
-        return {
-            artist: 'Unknown Artist', albumartist: 'Unknown Artist', title: 'Untitled',
-            album: 'Unknown Album', date: '', year: '', tracknumber: '', discnumber: '1',
-            totaltracks: '', length: '0:00', rating: '', genre: '', path: ''
-        };
-    },
-    updateCurrent: function (metadb) {
-        var info = this.getInfo(metadb);
-        for (var key in info) if (info.hasOwnProperty(key)) this.current[key] = info[key];
-        try { this.current.playback_time = this.formats.playback_time.Eval() || '0:00'; }
-        catch (e) { this.current.playback_time = '0:00'; }
-    },
-    clearCurrent: function () {
-        var empty = this.getEmptyInfo();
-        for (var key in empty) if (empty.hasOwnProperty(key)) this.current[key] = empty[key];
-        this.current.playback_time = '0:00';
-    }
-};
+
 
 // ========================================================================================
 // MAIN APP WITH DATA MANAGER INTEGRATION
@@ -111,7 +36,7 @@ var MainApp = {
     init: function () {
         if (this.initialized) return;
         try {
-            TitleFormatManager.init();
+            //TitleFormatManager.init();
             DataManager.init();
             console.log('✅ DataManager:                          READY');
 
@@ -252,8 +177,8 @@ function on_size() {
 
 function on_playback_new_track(metadb) {
     DataManager.onTrackChange(metadb);
-    if (metadb) TitleFormatManager.updateCurrent(metadb);
-    else        TitleFormatManager.clearCurrent();
+    if (metadb) DataManager.updateCurrent(metadb);
+    else        DataManager.clearCurrent();
 
     currentPlayingTrack = metadb;
     currentSelectedTrack = DataManager.getCurrentTrack();
@@ -263,6 +188,10 @@ function on_playback_new_track(metadb) {
 function on_playback_stop() {
     if (typeof updatePlayPauseButton === 'function') updatePlayPauseButton();
     if (typeof bottomPanel_on_playback_stop === 'function') bottomPanel_on_playback_stop();
+}
+function on_playback_order_changed(new_order_index) {
+    if (typeof topPanel_on_playback_order_changed === 'function')
+        topPanel_on_playback_order_changed(new_order_index);
 }
 function on_playback_pause() {
     if (typeof updatePlayPauseButton === 'function') updatePlayPauseButton();
