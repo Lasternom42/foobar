@@ -13,6 +13,18 @@ var DataManager = {
     albumTracks: [],
     artistAlbums: [],
     discList: [],
+	
+	formats: {
+        artist: null, albumartist: null, title: null, album: null, date: null,
+        tracknumber: null, discnumber: null, totaltracks: null, length: null,
+        playback_time: null, rating: null, genre: null
+    },
+    current: {
+        artist: 'Unknown Artist', albumartist: 'Unknown Artist', title: 'Untitled',
+        album: 'Unknown Album', date: '', year: '', tracknumber: '', discnumber: '1',
+        totaltracks: '', length: '0:00', playback_time: '0:00', rating: '', genre: '',
+        path: ''
+    },
     
     // Track references  
     playingTrack: null,
@@ -23,25 +35,104 @@ var DataManager = {
     
     initialized: false,
     
-    // ========================================================================================
-    // 🔹 INITIALIZATION
-    // ========================================================================================
+// ========================================================================================
+// 🔹 INITIALIZATION
+// ========================================================================================
     
     init: function() {
         if (this.initialized) return;
         
-        console.log("🧠 Data Manager initializing...");
-        this.initialized = true;
+        //console.log("    Data Manager initializing...");
         
-        // Start in playing mode
+        
+		if (this.initialized) return;
+        try {
+            this.formats.artist        = fb.TitleFormat('%artist%');
+            this.formats.albumartist   = fb.TitleFormat('%albumartist%');
+            this.formats.title         = fb.TitleFormat('%title%');
+            this.formats.album         = fb.TitleFormat('%album%');
+            this.formats.date          = fb.TitleFormat('%date%');
+            this.formats.tracknumber   = fb.TitleFormat('%tracknumber%');
+            this.formats.discnumber    = fb.TitleFormat('%discnumber%');
+            this.formats.totaltracks   = fb.TitleFormat('%totaltracks%');
+            this.formats.length        = fb.TitleFormat('%length%');
+            this.formats.playback_time = fb.TitleFormat('%playback_time%');
+            this.formats.rating        = fb.TitleFormat('%rating%');
+            this.formats.genre         = fb.TitleFormat('%genre%');
+            this.initialized = true;
+        } catch (e) {
+            console.log('❌ Data Manager Manager init error:', e.message);
+        }
+       
+		
+
+	   // Start in playing mode 
         this.setMode('playing');
         
-        console.log("✅ Data Manager initialized");
+        console.log("    Data Manager module               Ready");
     },
     
-    // ========================================================================================
-    // 🔹 MODE SWITCHING (Your 2-mode system)
-    // ========================================================================================
+    
+	
+// ========================================================================================
+// 🔹 old TitleFormatManager
+// ========================================================================================
+	
+	getInfo: function (metadb) {
+        if (!this.initialized) this.init();
+        if (!metadb) return this.getEmptyInfo();
+        try {
+            return {
+                artist:        this.formats.artist.EvalWithMetadb(metadb) || 'Unknown Artist',
+                albumartist:   this.formats.albumartist.EvalWithMetadb(metadb) || 'Unknown Artist',
+                title:         this.formats.title.EvalWithMetadb(metadb) || 'Untitled',
+                album:         this.formats.album.EvalWithMetadb(metadb) || 'Unknown Album',
+                date:          this.formats.date.EvalWithMetadb(metadb) || '',
+                year:          this.formats.date.EvalWithMetadb(metadb) || '',
+                tracknumber:   this.formats.tracknumber.EvalWithMetadb(metadb) || '',
+                discnumber:    this.formats.discnumber.EvalWithMetadb(metadb) || '1',
+                totaltracks:   this.formats.totaltracks.EvalWithMetadb(metadb) || '',
+                length:        this.formats.length.EvalWithMetadb(metadb) || '0:00',
+                rating:        this.formats.rating.EvalWithMetadb(metadb) || '',
+                genre:         this.formats.genre.EvalWithMetadb(metadb) || '',
+                path:          metadb.Path || ''
+            };
+        } catch (e) {
+            console.log('❌ Error getting metadb info:', e.message);
+            return this.getEmptyInfo();
+        }
+    },
+    getEmptyInfo: function () {
+        return {
+            artist: 'Unknown Artist', albumartist: 'Unknown Artist', title: 'Untitled',
+            album: 'Unknown Album', date: '', year: '', tracknumber: '', discnumber: '1',
+            totaltracks: '', length: '0:00', rating: '', genre: '', path: ''
+        };
+    },
+    updateCurrent: function (metadb) {
+        var info = this.getInfo(metadb);
+        for (var key in info) if (info.hasOwnProperty(key)) this.current[key] = info[key];
+        try { this.current.playback_time = this.formats.playback_time.Eval() || '0:00'; }
+        catch (e) { this.current.playback_time = '0:00'; }
+    },
+    clearCurrent: function () {
+        var empty = this.getEmptyInfo();
+        for (var key in empty) if (empty.hasOwnProperty(key)) this.current[key] = empty[key];
+        this.current.playback_time = '0:00';
+    },
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+// ========================================================================================
+// 🔹 MODE SWITCHING (Your 2-mode system)
+// ========================================================================================
     
     setMode: function(newMode) {
         if (newMode !== 'playing' && newMode !== 'selected') {
@@ -50,7 +141,7 @@ var DataManager = {
         }
         
         this.mode = newMode;
-        console.log("🎯 Mode switched to:", newMode);
+        console.log("    Mode switched to:", newMode, "        Ready");
         
         // Refresh data for new mode
         this.refreshAllData();
@@ -78,13 +169,13 @@ var DataManager = {
         this.selectedTrack = metadb;
         this.setMode('selected');
         
-        console.log("🎯 Track selected:", metadb.Path);
+        console.log("    Track selected:", metadb.Path);
         return metadb;
     },
     
-    // ========================================================================================
-    // 🔹 SINGLE TRACK ANALYSIS (Your approach: analyze 1 track)
-    // ========================================================================================
+// ========================================================================================
+// 🔹 SINGLE TRACK ANALYSIS (Your approach: analyze 1 track)
+// ========================================================================================
     
     analyzeCurrentTrack: function() {
         var track = this.getCurrentTrack();
@@ -94,7 +185,7 @@ var DataManager = {
         }
         
         try {
-            var info = TitleFormatManager.getInfo(track);
+            var info = DataManager.getInfo(track);
             
             this.currentTrackInfo = {
                 metadb: track,
@@ -112,7 +203,7 @@ var DataManager = {
                 path: info.path
             };
             
-            console.log("🔍 Analyzed track:", this.currentTrackInfo.artist, "-", this.currentTrackInfo.title);
+            //console.log("    Analyzed track:", this.currentTrackInfo.artist, "-", this.currentTrackInfo.title);
             return this.currentTrackInfo;
             
         } catch (e) {
@@ -151,7 +242,7 @@ var DataManager = {
             for (var i = 0; i < trackList.Count; i++) {
                 var metadb = trackList[i];
                 if (metadb) {
-                    var info = TitleFormatManager.getInfo(metadb);
+                    var info = DataManager.getInfo(metadb);
                     tracks.push({
                         metadb: metadb,
                         title: info.title,
@@ -167,7 +258,7 @@ var DataManager = {
             // IMPROVED: Use lodash to sort tracks
             this.albumTracks = _.orderBy(tracks, ['discNumber', 'trackNumber']);
             
-            console.log("💽 Loaded", this.albumTracks.length, "album tracks");
+            //console.log("    Loaded", this.albumTracks.length, "album tracks");
             return this.albumTracks;
             
         } catch (e) {
@@ -201,7 +292,7 @@ var DataManager = {
             for (var i = 0; i < trackList.Count; i++) {
                 var metadb = trackList[i];
                 if (metadb) {
-                    var info = TitleFormatManager.getInfo(metadb);
+                    var info = DataManager.getInfo(metadb);
                     var artist = leftPanelConfig.useAlbumArtist ? 
                                 (info.albumartist || info.artist) : 
                                 info.artist;
@@ -223,7 +314,7 @@ var DataManager = {
                 [function(album) { return parseInt(album.year) || 9999; }, 'album']
             );
             
-            console.log("🎵 Loaded", this.artistAlbums.length, "artist albums");
+            //console.log("    Loaded", this.artistAlbums.length, "artist albums");
             return this.artistAlbums;
             
         } catch (e) {
@@ -285,7 +376,7 @@ var DataManager = {
     // ========================================================================================
     
     refreshAllData: function() {
-        console.log("🔄 Refreshing all data...");
+        //console.log("    Refreshing all data...");
         
         // Step 1: Analyze current track
         this.analyzeCurrentTrack();
@@ -305,7 +396,7 @@ var DataManager = {
         // Step 3: Derive disc list (no extra query needed)
         this.getDiscList();
         
-        console.log("✅ Data refresh complete");
+        console.log("    Data refresh                                Ready");
         return true;
     },
     
@@ -371,7 +462,7 @@ var DataManager = {
             for (var i = 0; i < trackList.Count; i++) {
                 var metadb = trackList[i];
                 if (metadb) {
-                    var info = TitleFormatManager.getInfo(metadb);
+                    var info = DataManager.getInfo(metadb);
                     tracks.push({
                         metadb: metadb,
                         discNumber: parseInt(info.discnumber) || 1,
@@ -385,7 +476,7 @@ var DataManager = {
                 return (track.discNumber * 1000) + track.trackNumber;
             });
             
-            return firstTrack ? firstTrack.metadb : null;
+            return firstTrack ? firstTrack.metadb : null; 
             
         } catch (e) {
             console.log("❌ Error finding first track:", e.message);
@@ -394,4 +485,4 @@ var DataManager = {
     }
 };
 
-console.log("✅ Data Manager Module Ready");
+console.log("    Data Manager Module Ready");
